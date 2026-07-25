@@ -1,6 +1,8 @@
 <script>
   import Login from './Login.svelte';
   import * as auth from '../lib/auth.js';
+  import * as kista from '../lib/kista.js';
+  import { forget } from '../lib/collection.svelte.js';
   import { isEphemeral, setEphemeral } from '../lib/storage.js';
   import { i18n, setLanguage, t } from '../lib/i18n.svelte.js';
 
@@ -8,12 +10,32 @@
 
   let ephemeral = $state(isEphemeral());
   let leaving = $state(false);
+  let clearing = $state(false);
+  let cleared = $state(false);
 
   async function logOut() {
     leaving = true;
     await auth.logOut();
     onlogout?.();
     leaving = false;
+  }
+
+  /**
+   * Ticking "log me out when I close the tab" must also remove the collection
+   * already on disk — otherwise the setting protects the token and leaves an
+   * archive of other people's reading on a shared machine (ADR 0009).
+   */
+  async function onEphemeralChange() {
+    setEphemeral(ephemeral);
+    if (ephemeral) await kista.destroy();
+  }
+
+  async function clearCollection() {
+    clearing = true;
+    cleared = false;
+    await forget();
+    clearing = false;
+    cleared = true;
   }
 </script>
 
@@ -37,11 +59,7 @@
     <p class="where">{t('settings.loggedInAs', { domain: account.domain })}</p>
 
     <label class="toggle">
-      <input
-        type="checkbox"
-        bind:checked={ephemeral}
-        onchange={() => setEphemeral(ephemeral)}
-      />
+      <input type="checkbox" bind:checked={ephemeral} onchange={onEphemeralChange} />
       <span>
         {t('settings.ephemeral')}
         <span class="help">{t('settings.ephemeralHelp')}</span>
@@ -56,6 +74,19 @@
     <Login />
   {/if}
 </section>
+
+{#if account}
+  <section>
+    <h2>{t('settings.collection')}</h2>
+    <p class="help">{t('settings.collectionHelp')}</p>
+    <button type="button" class="out" onclick={clearCollection} disabled={clearing}>
+      {clearing ? t('settings.clearingCollection') : t('settings.clearCollection')}
+    </button>
+    {#if cleared}
+      <p class="help">{t('settings.collectionCleared')}</p>
+    {/if}
+  </section>
+{/if}
 
 <style>
   h1 {

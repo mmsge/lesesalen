@@ -1,7 +1,12 @@
 """Lesesalen's HTTP surface.
 
-Three API endpoints, all unauthenticated, none of which accept anything
-identifying — plus the static client and the box's required files.
+Four API endpoints, all unauthenticated, none of which carry a token or a reader
+identity — plus the static client and the box's required files.
+
+Three of them accept nothing that names a person: bare domain names, post URIs
+and book ids. `/api/samling` is the exception and is the reason ADR 0008 exists:
+it takes the URI of an actor somebody follows. Same discipline applies — no log
+line, no storage, `no-store` on the way out.
 
 The security headers below are set here rather than in Caddy on purpose: they
 are application-specific (they describe *this* app's script and connection
@@ -18,7 +23,7 @@ from typing import Any
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
 
-from . import books, config, db, enrich, instances, netfetch, ratelimit, shell
+from . import books, config, db, enrich, instances, netfetch, outbox, ratelimit, shell
 
 _shell: shell.Shell | None = None
 
@@ -195,6 +200,39 @@ async def api_berik(request: Request) -> Response:
         {"innslag": enriched, "boker": book_records},
         headers={"Cache-Control": "no-store"},
     )
+
+
+@app.post("/api/samling")
+async def api_samling(request: Request) -> Response:
+    """In: one followed actor's URI and a page number. Out: that page, as cards.
+
+    This is the endpoint the feed is built on: the browser reads its own follow
+    list, keeps the accounts on BookWyrm instances, and walks their outboxes.
+    Fifteen posts per request instead of one (ADR 0008).
+
+    An actor URI says whose reading somebody is following, so it is treated
+    exactly like a post URI: no log line here, and uvicorn's access log is off in
+    the Dockerfile CMD (ADR 0003). The page number is an integer, and the URL we
+    fetch is built from the actor's own outbox — never handed to us.
+    """
+    payload = await _json_body(request)
+    if payload is None:
+        return JSONResponse({"feil": "ugyldig JSON"}, status_code=400)
+    actor = payload.get("aktor")
+    if not isinstance(actor, str) or not actor:
+        return JSONResponse({"feil": "aktor må vera ein URI"}, status_code=400)
+    page = payload.get("side", 1)
+    # `bool` is an `int` in Python, and `True` would page an outbox.
+    if isinstance(page, bool) or not isinstance(page, int):
+        return JSONResponse({"feil": "side må vera eit heiltal"}, status_code=400)
+    if not 1 <= page <= config.MAX_OUTBOX_PAGE:
+        return JSONResponse({"feil": "side er utanfor rekkjevidde"}, status_code=400)
+
+    try:
+        collected = await outbox.collect(actor, page)
+    except outbox.OutboxError as refusal:
+        return JSONResponse({"feil": refusal.reason}, status_code=400)
+    return JSONResponse(collected, headers={"Cache-Control": "no-store"})
 
 
 @app.api_route("/api/bok/{book_id}", methods=["GET", "HEAD"])

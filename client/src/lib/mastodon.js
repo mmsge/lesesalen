@@ -29,14 +29,6 @@ function nextMaxId(response, statuses) {
   return statuses.length ? statuses[statuses.length - 1].id : null;
 }
 
-export async function homeTimeline(account, { maxId = null, limit = 40 } = {}) {
-  const params = new URLSearchParams({ limit: String(limit) });
-  if (maxId) params.set('max_id', maxId);
-  const response = await call(account, `/api/v1/timelines/home?${params}`);
-  const statuses = await response.json();
-  return { statuses, maxId: nextMaxId(response, statuses) };
-}
-
 export async function accountStatuses(account, accountId, { maxId = null, limit = 40 } = {}) {
   const params = new URLSearchParams({ limit: String(limit), exclude_replies: 'false' });
   if (maxId) params.set('max_id', maxId);
@@ -51,9 +43,13 @@ export async function verifyCredentials(account) {
 }
 
 /**
- * The reader's follow list, read in the browser for the "gather" action.
- * It is used to decide whose posts to ask the instance for, and is never sent
- * anywhere else.
+ * The reader's follow list, read in the browser. This is what the feed is built
+ * from: keep the accounts on BookWyrm instances, then walk their outboxes
+ * (ADR 0008).
+ *
+ * Only the actor URIs of the BookWyrm accounts leave the browser, one at a time,
+ * to `/api/samling`. The rest of the follow list — who else the reader follows,
+ * and how many — never goes anywhere.
  */
 export async function following(account, accountId, { maxId = null, limit = 80 } = {}) {
   const params = new URLSearchParams({ limit: String(limit) });
@@ -68,6 +64,29 @@ export async function following(account, accountId, { maxId = null, limit = 80 }
 export async function lookupAccount(account, acct) {
   const response = await call(account, `/api/v1/accounts/lookup?acct=${encodeURIComponent(acct)}`);
   return response.json();
+}
+
+/**
+ * The reader's instance's own copy of a post, found by its ActivityPub URI.
+ *
+ * A post collected from an outbox has no Mastodon status id, and favouriting,
+ * boosting and replying all need one. This is the only way to get it.
+ *
+ * Called lazily — on the first interaction with a card, never for a whole
+ * screenful. `resolve=true` makes the reader's instance go and fetch the remote
+ * object if it does not have it, so doing this eagerly would be one federated
+ * fetch per card, paid for by their server.
+ */
+export async function resolveStatus(account, uri) {
+  const params = new URLSearchParams({
+    q: uri,
+    type: 'statuses',
+    resolve: 'true',
+    limit: '1',
+  });
+  const response = await call(account, `/api/v2/search?${params}`);
+  const found = await response.json();
+  return (found.statuses || [])[0] || null;
 }
 
 export async function favourite(account, statusId, on) {
@@ -105,6 +124,18 @@ export async function reply(account, { inReplyToId, text, visibility = 'public',
     body,
   });
   return response.json();
+}
+
+/**
+ * An account's ActivityPub id — the thing whose outbox we can ask for.
+ *
+ * `uri` is the actor id and is what we want; Mastodon has only served it since
+ * 4.2, so fall back to `url`. On BookWyrm the two are the same string
+ * (`https://bookwyrm.social/user/x`), which is why the fallback is safe here.
+ */
+export function actorUri(account) {
+  const candidate = account?.uri || account?.url;
+  return typeof candidate === 'string' && candidate.startsWith('https://') ? candidate : null;
 }
 
 /** The host that actually served an account, which is what identifies its software. */

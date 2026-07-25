@@ -1,16 +1,16 @@
 <script>
   /**
-   * One person's book posts.
+   * One person's shelf.
    *
-   * The one broadening the project allows: it is a normal client affordance, it
-   * goes through the reader's own instance with the reader's own token, and it
-   * shows exactly what Mastodon would show. No server involvement beyond the
-   * same enrichment every other card gets.
+   * A normal client affordance: the account is looked up through the reader's own
+   * instance with the reader's own token, and their shelf comes from the same
+   * outbox walk the feed uses — so it reaches their whole back catalogue rather
+   * than the recent slice the reader's instance happens to hold.
    */
   import Card from '../components/Card.svelte';
   import Composer from '../components/Composer.svelte';
   import * as mastodon from '../lib/mastodon.js';
-  import { postsByAccount } from '../lib/feed.svelte.js';
+  import { shelfOf } from '../lib/collection.svelte.js';
   import { navigate, route, link } from '../lib/router.svelte.js';
   import { plain } from '../lib/sanitise.js';
   import { t } from '../lib/i18n.svelte.js';
@@ -34,8 +34,8 @@
         const found = await mastodon.lookupAccount(account, handle);
         if (cancelled) return;
         who = found;
-        const posts = await postsByAccount(account, found.id);
-        if (!cancelled) items = posts;
+        const shelf = await shelfOf(found);
+        if (!cancelled) items = shelf.items;
       } catch {
         if (!cancelled) problem = true;
       } finally {
