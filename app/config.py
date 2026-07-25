@@ -44,6 +44,13 @@ USER_AGENT = f"Lesesalen/{__version__} (+{BASE_URL}/om)"
 ENRICH_CACHE_SIZE = _env_int("LESESALEN_ENRICH_CACHE_SIZE", 2000)
 ENRICH_CACHE_TTL = _env_int("LESESALEN_ENRICH_CACHE_TTL", 3600)
 
+# Actor documents, for the outbox walk: which URL is an actor's outbox, and how
+# many items it holds. Also memory-only, and longer-lived than an enrichment
+# because an outbox URL essentially never moves — but still volatile, because the
+# keys are the actor URIs of accounts somebody follows (ADR 0003).
+ACTOR_CACHE_SIZE = _env_int("LESESALEN_ACTOR_CACHE_SIZE", 500)
+ACTOR_CACHE_TTL = _env_int("LESESALEN_ACTOR_CACHE_TTL", 6 * 3600)
+
 # A nodeinfo answer is infrastructure metadata and changes rarely: 30 days.
 INSTANCE_TTL = _env_int("LESESALEN_INSTANCE_TTL", 30 * 24 * 3600)
 # Don't re-probe a dead or non-BookWyrm host on every request either.
@@ -68,6 +75,14 @@ MAX_DOMAINS_PER_REQUEST = _env_int("LESESALEN_MAX_DOMAINS_PER_REQUEST", 100)
 MAX_URIS_PER_REQUEST = _env_int("LESESALEN_MAX_URIS_PER_REQUEST", 40)
 # How many origin fetches one /api/berik call may trigger. Cache hits are free.
 ENRICH_CONCURRENCY = _env_int("LESESALEN_ENRICH_CONCURRENCY", 4)
+
+# Outbox walking. The page number is an integer we build a URL from, so it has to
+# be bounded: without a cap, `side: 100000` is a request to walk somebody's whole
+# history in one go. 400 pages is ~6000 posts, deeper than any real shelf.
+MAX_OUTBOX_PAGE = _env_int("LESESALEN_MAX_OUTBOX_PAGE", 400)
+# BookWyrm serves 15 per page. The cap is for a hostile or broken origin that
+# answers with thousands, each of which would cost a book lookup.
+MAX_OUTBOX_ITEMS = _env_int("LESESALEN_MAX_OUTBOX_ITEMS", 60)
 
 # Covers are re-encoded on ingest (§9.4) — never stored or served as uploaded.
 COVER_MAX_EDGE = _env_int("LESESALEN_COVER_MAX_EDGE", 800)

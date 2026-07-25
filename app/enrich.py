@@ -352,7 +352,7 @@ async def enrich(uris: list[str]) -> tuple[dict[str, Any], dict[str, Any]]:
         )
         for uri, outcome in zip(misses, fetched):
             enrichment = None if isinstance(outcome, BaseException) else outcome
-            _cache.put(uri, enrichment if enrichment is not None else NOT_A_BOOK_POST)
+            remember(uri, enrichment)
             results[uri] = enrichment
 
     book_ids = {value["bok"] for value in results.values() if value and value.get("bok")}
@@ -362,6 +362,21 @@ async def enrich(uris: list[str]) -> tuple[dict[str, Any], dict[str, Any]]:
         if record:
             book_records[identifier] = books.public_book(record)
     return results, book_records
+
+
+def cached(uri: str) -> Any:
+    """The cached enrichment for `uri`: a dict, `NOT_A_BOOK_POST`, or None if unseen.
+
+    Exposed so `outbox.py` shares this cache rather than keeping a second one —
+    the same post can arrive either by URI or in an outbox page, and it should
+    only ever be fetched and parsed once.
+    """
+    return _cache.get(uri)
+
+
+def remember(uri: str, enrichment: dict[str, Any] | None) -> None:
+    """Cache a parsed result, storing `None` as the negative sentinel."""
+    _cache.put(uri, enrichment if enrichment is not None else NOT_A_BOOK_POST)
 
 
 def cache_stats() -> dict[str, Any]:
