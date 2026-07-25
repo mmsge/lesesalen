@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Sitemap for lesesalen. Only the three public, logged-out pages belong here:
+     the feed exists solely for a signed-in reader and is never crawlable, and the
+     API is disallowed in robots.txt. __LASTMOD__ is stamped at serve time with the
+     site's git-derived modified date (scripts/generate-page-dates.sh). -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://lesesalen.msge.no/</loc>
+    <lastmod>__LASTMOD__</lastmod>
+  </url>
+  <url>
+    <loc>https://lesesalen.msge.no/om</loc>
+    <lastmod>__LASTMOD__</lastmod>
+  </url>
+  <url>
+    <loc>https://lesesalen.msge.no/personvern</loc>
+    <lastmod>__LASTMOD__</lastmod>
+  </url>
+</urlset>

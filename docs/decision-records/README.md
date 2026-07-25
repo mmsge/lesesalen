@@ -46,4 +46,10 @@ decision or an agent made it without input**:
 
 | # | Title | Status |
 |---|-------|--------|
-| _none yet_ | | |
+| [0001](0001-client-built-in-ci-not-on-the-box.md) | The Svelte client is built in CI and committed, never on the box | Accepted |
+| [0002](0002-a-client-not-a-crawler.md) | Lesesalen is a client, not a service: no crawler, no logged-out feed | Accepted |
+| [0003](0003-berik-is-an-ssrf-boundary.md) | `/api/berik` is an SSRF boundary, and every guard on it is load-bearing | Accepted |
+| [0004](0004-covers-are-re-encoded-on-ingest.md) | Cover images are raster-only and re-encoded on ingest | Accepted |
+| [0005](0005-enrichment-cache-is-memory-only.md) | Post enrichment lives in memory only, and never on disk | Accepted |
+| [0006](0006-no-trusted-types-in-the-csp.md) | `require-trusted-types-for 'script'` blanks the app in Chromium | Accepted |
+| [0007](0007-the-uri-is-the-type-discriminator.md) | BookWyrm serves third parties a plain `Note`; the URI is the type | Accepted |

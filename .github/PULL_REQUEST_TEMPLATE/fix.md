@@ -22,7 +22,7 @@ labels: bug
 ## Deploy impact
 
 <!-- Tick what applies, delete the rest. -->
-- [ ] Needs a redeploy: `cd /srv/<slug> && make deploy` (or `make remote-deploy`)
+- [ ] Needs a redeploy: `cd /srv/lesesalen && make deploy` (or `make remote-deploy`)
 - [ ] New/changed env var or secret — update `.env` on the box (see `.env.example`)
 - [ ] Port or domain change — that is **central ingress**: open a matching PR in
       [`mmsge/hetzner-server`](https://github.com/mmsge/hetzner-server). Not here.
@@ -31,7 +31,7 @@ labels: bug
 ## Verification
 
 <!-- How did you confirm the fix? Reproduce-then-fixed steps, `make verify`,
-     `curl -sI https://__SLUG__.msge.no`, logs, screenshots. -->
+     `curl -sI https://lesesalen.msge.no`, logs, screenshots. -->
 
 ## Decision record (ADR)
 

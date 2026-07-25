@@ -1,6 +1,7 @@
 # Standard service targets for the Hetzner box. Slug is this service's dir name.
 SERVER ?= msge
-SLUG   ?= __SLUG__
+SLUG   ?= lesesalen
+PORT   ?= 4023
 
 deploy:            ## Pull, rebuild, restart (run on the server in /srv/$(SLUG))
 	git pull --ff-only
@@ -16,10 +17,20 @@ status:            ## Show container status
 verify:            ## Build + boot + hit /healthz (local smoke test)
 	./scripts/generate-page-dates.sh || echo "WARN: page dates not regenerated — pages will stamp boot time"
 	docker compose up -d --build
-	@sleep 3
-	@curl -fsS http://172.18.0.1:__PORT__/healthz && echo "  OK" || (echo "  FAILED"; exit 1)
+	@sleep 5
+	@curl -fsS http://172.18.0.1:$(PORT)/healthz && echo "  OK" || (echo "  FAILED"; exit 1)
 
 remote-deploy:     ## Deploy from a laptop over SSH
 	ssh $(SERVER) 'cd /srv/$(SLUG) && make deploy'
 
-.PHONY: deploy logs status verify remote-deploy
+# ─── client (never built on the box — see ADR 0001) ───────────────────────────
+client:            ## Build the Svelte client into client/dist (commit the result)
+	cd client && npm ci && npm run build
+
+client-dev:        ## Vite dev server on :5173, proxying /api to a local server
+	cd client && npm install && npm run dev
+
+test:              ## Run the server test suite
+	python -m pytest -q
+
+.PHONY: deploy logs status verify remote-deploy client client-dev test

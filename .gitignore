@@ -1,5 +1,16 @@
 .env
-node_modules/
+__pycache__/
+*.pyc
+.venv/
 *.log
+.pytest_cache/
 # Regenerated at deploy by scripts/generate-page-dates.sh
 page-dates.json
+
+# Client build inputs. client/dist is deliberately NOT ignored — it is committed
+# so the box never has to run Node (ADR 0001).
+client/node_modules/
+client/.vite/
+
+# Local dev data (SQLite + downloaded covers). On the box this is a named volume.
+/data/

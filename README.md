@@ -1,66 +1,148 @@
-# __SLUG__
+# Lesesalen
 
-A service on the shared Hetzner box (`msge`, `157.180.66.111`). Central TLS/routing
-lives in [`mmsge/hetzner-server`](https://github.com/mmsge/hetzner-server); see
-`CLAUDE.md` for the deployment context.
+**A Mastodon web client that shows you only the book posts.**
 
-## From this skeleton to a live service
+`lesesalen.msge.no` · slug `lesesalen` · port `4023`
 
-1. Replace `server.js` (and `Dockerfile`) with your app; keep a `/healthz` route.
-2. `make verify` — builds, boots, and curls `/healthz`.
-3. Register + deploy on the box — see `hetzner-server/NEW-SERVICE.md` (or ask the
-   MCP: `onboarding_steps("__SLUG__", __PORT__)`).
+Dark, warm, library after hours. Five kinds of book post, five distinct looks.
+Quotations break the column entirely.
 
-## Local
+## What it is, and what it deliberately is not
 
-```sh
-make verify     # generate page dates + build + boot + healthz
-make logs       # follow logs
-make status     # container status
+BookWyrm has no public API, but it federates. Every BookWyrm post reaches your
+Mastodon home timeline as a plain Note. Lesesalen is a Mastodon client that
+shows you those posts and nothing else, in a reading room built for books
+instead of for microblogging.
+
+**It is a client, not a service.** The governing principle:
+
+> You see a post because you follow that account, or because someone you follow
+> boosted it. Same as Mastodon. Nothing more.
+
+So there is no crawler, no logged-out feed and no discovery surface. Those posts
+are public, but public is not the same as consenting to be aggregated, indexed
+and re-served by a third party the author never heard of. A stranger arriving at
+the site sees an explainer and some invented sample cards, not other people's
+reading. The one broadening is clicking an author to see their posts — a normal
+client affordance that goes through the reader's own instance with the reader's
+own token. See [ADR 0002](docs/decision-records/0002-a-client-not-a-crawler.md).
+
+## The key technical insight
+
+Mastodon discards BookWyrm's rich fields. A review arrives as a Status with
+`content` HTML and nothing else — the rating, review title, quoted passage,
+position and book link are custom ActivityPub properties Mastodon has no column
+for.
+
+But the origin object is public and addressable, and **its URI encodes its own
+type**:
+
+```
+https://bookwyrm.social/user/mvrkws/generatednote/12091719   reading status
+https://bookwyrm.social/user/mvrkws/comment/11996174         comment
+https://bookwyrm.social/user/mvrkws/review/…                 review
+https://bookwyrm.social/user/mvrkws/quotation/…              quotation
 ```
 
-## Page dates (creation/modification metadata)
+Fetching that URI with `Accept: application/activity+json` returns the object,
+and `inReplyToBook` leads to the Edition with title, authors, cover, pages and
+ISBN.
 
-Every site on the box carries git-derived created/modified timestamps
-(hetzner-server ADR 0015 / msge-no ADR 0004), and this skeleton ships the
-pattern wired end to end:
+**The browser cannot do this, because BookWyrm instances do not send CORS
+headers for ActivityPub fetches. That single fact is the entire reason a server
+exists in this project.**
 
-- `scripts/generate-page-dates.sh` (pure git + POSIX sh) derives
-  **created** (oldest commit author date) / **modified** (newest) into the
-  gitignored `page-dates.json`. It runs on the **checkout** — the image has no
-  `.git`, and the box has no Node outside containers — hooked into
-  `make deploy`/`make verify`, and the Dockerfile `COPY`s the file in (optional
-  glob, so a bare `docker build` still works with a boot-time fallback).
-- `server.js` stamps the dates into the page's `<meta name="date">`/
-  `last-modified` pair, `article:published_time`/`article:modified_time`, and
-  the JSON-LD `WebSite` node, and serves a truthful `Last-Modified` header
-  (+ 304). **Drop the header if the page becomes DB/live-data-driven** — a git
-  validator would let caches revalidate stale content; keep the meta/JSON-LD.
-- CI (`.github/workflows/ci.yml`) boots the server and asserts the metadata is
-  present — it checks out with `fetch-depth: 0` because a shallow clone
-  collapses both dates onto the newest commit.
+One wrinkle worth knowing before reading the parser: BookWyrm serves third
+parties a *pure* representation where `type` is always `Note` and the rich
+fields are folded into the rendered content. The URI segment is therefore the
+real type discriminator, and the rating is reconstructed from the review's
+`name`. See [ADR 0007](docs/decision-records/0007-the-uri-is-the-type-discriminator.md).
 
-Keep the pattern when you replace `server.js`: site-level granularity (one
-created/modified pair) is the default; per-page only when pages have genuinely
-distinct histories (msge.no is the per-page exemplar).
+## Architecture
 
-## Pull requests
+```
+Browser (Svelte)                          Server (FastAPI)
+  |                                          |
+  |-- OAuth, timeline, replies, favs         |-- /api/instansar  (nodeinfo)
+  |   straight to the user's own instance    |-- /api/berik      (AP re-fetch)
+  |   token never leaves the browser         |-- /api/bok/<id>   (book + cover)
+  |                                          |
+  |------- post URIs, domains -------------->|
+  |<------ enrichment, book data ------------|
+                                             |
+                                    SQLite: instances, books
+                                    Disk:   cover images
+                                    Memory: parsed posts, TTL
+```
 
-This skeleton ships a shared PR template set in `.github/` (copied verbatim into
-every service, so box-wide conventions — deploy discipline, "central ingress lives in
-`hetzner-server`", web standards, ADRs + attribution — are prompted at review time):
+**The server never sees a token, a follow list, or a user identity.** There is no
+user table. There is no login on the server side at all.
 
-- `.github/pull_request_template.md` — the default, used by the green **Create PR** button.
-- `.github/PULL_REQUEST_TEMPLATE/{feature,fix,adr,chore}.md` — pick one by appending
-  `?template=NAME.md` to the compare URL, e.g.
-  `.../compare/hovud...my-branch?expand=1&template=fix.md`.
+| Stored | Contents | Why it is acceptable |
+|---|---|---|
+| `instance` | domain, software, probed_at | Infrastructure metadata, not personal |
+| `book` | title, authors, pages, isbn, cover, blurhash | A book edition is not anyone's personal information |
+| cover files | Downloaded once at enrichment | No per-view tracking, no reader IP reaching the origin instance |
 
-The `__SLUG__` in the templates is replaced by the same scaffold `sed` pass that fills
-in the rest of the skeleton.
+Post enrichment lives in an **in-memory LRU with a TTL** and is never written to
+disk. A restart empties it, which is correct
+([ADR 0005](docs/decision-records/0005-enrichment-cache-is-memory-only.md)).
+
+## Security
+
+Two things carry the weight of the whole design: the Content-Security-Policy,
+and sanitisation of remote HTML. The token lives in `localStorage`, so one
+successful XSS is a full account compromise for whoever is using the app.
+
+- `script-src 'self'`, `object-src 'none'`, no `'unsafe-inline'`, no
+  `'unsafe-eval'` — and **no `require-trusted-types-for 'script'`**, which
+  blanks the entire app in Chromium
+  ([ADR 0006](docs/decision-records/0006-no-trusted-types-in-the-csp.md)).
+- Remote HTML is sanitised **twice**, allowlist-only: DOMPurify in the browser
+  and `nh3` on the server. `RichText.svelte` is the only component permitted to
+  use `{@html}`.
+- `/api/berik` is treated as an SSRF boundary: allowlist first, https only,
+  address filtering with DNS pinning, redirect re-validation, size caps, per-IP
+  and per-domain rate limits, and no request logging — the URIs say what someone
+  is reading ([ADR 0003](docs/decision-records/0003-berik-is-an-ssrf-boundary.md)).
+- Covers are raster-only and re-encoded on ingest, because a malicious SVG
+  served from our origin would be same-origin script
+  ([ADR 0004](docs/decision-records/0004-covers-are-re-encoded-on-ingest.md)).
+
+## Development
+
+```sh
+make test          # pytest
+make client-dev    # Vite dev server on :5173, proxying /api to :8080
+python -m uvicorn app.main:app --port 8080 --no-access-log   # the API
+
+make client        # rebuild client/dist — commit the result (ADR 0001)
+make verify        # page dates + docker build + boot + healthz
+```
+
+The Svelte client is **built in CI and committed** to `client/dist`; the box
+never runs Node. CI rebuilds it and fails if the committed bundle is stale, so
+edit `client/src`, run `make client`, and commit what it produces
+([ADR 0001](docs/decision-records/0001-client-built-in-ci-not-on-the-box.md)).
+
+Fonts are self-hosted and hand-subset to latin + latin-ext (`client/src/fonts.css`).
+No CDN, anywhere: a CDN is a third party who can serve script into this origin,
+which would defeat the CSP.
+
+## Deployment
+
+Lives at `/srv/lesesalen`, Docker Compose, bound to `172.18.0.1:4023`, behind
+central Caddy. Routing and TLS are **not** managed here — they live in
+[`mmsge/hetzner-server`](https://github.com/mmsge/hetzner-server). See
+`CLAUDE.md` for the full box context.
+
+```sh
+cd /srv/lesesalen && make deploy
+```
 
 ## Licence
 
 AGPL-3.0 (`SPDX-License-Identifier: AGPL-3.0-or-later`) — see `LICENSE`. Keep the
-`NOTICE` (it carries the AI-authorship disclosure); fill in `<PROJECT>`/`<YEAR>` when
-you scaffold. Built with AI — [Laga med KI](https://msge.no/ki). Box-wide policy:
+`NOTICE` (it carries the AI-authorship disclosure). Built with AI —
+[Laga med KI](https://msge.no/ki). Box-wide policy:
 `hetzner-server/docs/licensing/` + ADR 0018.

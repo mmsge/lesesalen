@@ -1,0 +1,16 @@
+# robots.txt for https://lesesalen.msge.no/
+#
+# The public surface is three pages: the explainer, /om and /personvern. There is
+# no logged-out feed and no discovery surface — a stranger never sees anyone's
+# reading — so there is nothing else here worth indexing.
+#
+# /api/ is disallowed on purpose: /api/berik takes the URIs of the posts a reader
+# is looking at, and those have no business in a search index.
+User-agent: *
+Allow: /$
+Allow: /om
+Allow: /personvern
+Disallow: /api/
+Disallow: /omslag/
+
+Sitemap: https://lesesalen.msge.no/sitemap.xml
