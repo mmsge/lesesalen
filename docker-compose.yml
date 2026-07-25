@@ -1,20 +1,37 @@
-# Compliant service skeleton for the Hetzner box.
-# Replace __SLUG__ / __PORT__ (or let the MCP `scaffold_service` tool fill them).
-name: __SLUG__            # pin the Compose project name — a dir rename can't orphan named volumes
+# Lesesalen — a Mastodon client that shows only the book posts.
+# Central TLS/routing lives in mmsge/hetzner-server; nothing Caddy-shaped here.
+name: lesesalen           # pin the Compose project name — a dir rename can't orphan named volumes
 
 services:
-  __SLUG__:
+  lesesalen:
     build: .
     restart: unless-stopped
-    mem_limit: 256m        # the box is small (3.7 GB / 2 vCPU) — always cap memory
+    mem_limit: 384m        # the box is small (3.7 GB / 2 vCPU) — always cap memory
     # Publish where central Caddy can dial it: the bridge gateway 172.18.0.1:PORT
-    # (kept off the public interface) or 0.0.0.0:PORT — never 127.0.0.1.
+    # (kept off the public interface) — never 127.0.0.1.
     ports:
-      - "172.18.0.1:__PORT__:8080"
-    # env_file: .env       # uncomment if the service needs secrets (see .env.example)
+      - "172.18.0.1:4023:8080"
+    volumes:
+      # Instance nodeinfo + bibliographic data + cover files. Post enrichment is
+      # deliberately NOT here — it lives in an in-memory TTL cache and dies with
+      # the process (ADR 0005).
+      - lesesalen_data:/data
+    environment:
+      LESESALEN_DATA_DIR: /data
+    # env_file: .env       # no secrets required — see .env.example
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
+      # 127.0.0.1, never `localhost`: in a container localhost resolves to ::1
+      # first and single-address clients never fall back (hetzner-server ADR 0010).
+      # urllib falls through all addresses anyway, but the convention is the convention.
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/healthz',timeout=4).read()==b'ok' else 1)"
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s   # grace while the app boots before failures count
+
+volumes:
+  lesesalen_data:

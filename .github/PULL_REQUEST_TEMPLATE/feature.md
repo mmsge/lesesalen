@@ -16,10 +16,10 @@ labels: enhancement
 
 ## Deploy impact
 
-<!-- How does this land on the box (/srv/<slug>, reverse-proxied by central Caddy)?
+<!-- How does this land on the box (/srv/lesesalen, reverse-proxied by central Caddy)?
      Tick what applies, delete the rest. -->
 - [ ] No box-side action needed — a normal `make deploy` rebuild is enough
-- [ ] Needs a redeploy: `cd /srv/<slug> && make deploy` (or `make remote-deploy`)
+- [ ] Needs a redeploy: `cd /srv/lesesalen && make deploy` (or `make remote-deploy`)
 - [ ] New/changed env var or secret — update `.env` on the box (see `.env.example`)
 - [ ] New service / port / domain — that is **central ingress**: register it in
       [`mmsge/hetzner-server`](https://github.com/mmsge/hetzner-server) (`make add-subdomain`,
@@ -28,7 +28,7 @@ labels: enhancement
 
 ## Verification
 
-<!-- How did you test this? e.g. `make verify` output, `curl -sI https://__SLUG__.msge.no`,
+<!-- How did you test this? e.g. `make verify` output, `curl -sI https://lesesalen.msge.no`,
      manual steps, screenshots. Anything that shows it actually works. -->
 
 ## Web standards & discoverability
@@ -59,5 +59,5 @@ labels: enhancement
 
 - [ ] `/healthz` route and the Compose `healthcheck:` block are intact
 - [ ] `mem_limit` set; port bound to `172.18.0.1:PORT` or `0.0.0.0:PORT` — never `127.0.0.1`
-- [ ] Compose project name pinned (`name: <slug>`)
+- [ ] Compose project name pinned (`name: lesesalen`)
 - [ ] Central ingress untouched here (TLS/routing/domain live in `mmsge/hetzner-server`)

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Lesesalen">
+  <rect width="32" height="32" rx="4" fill="#0F0D0B"/>
+  <!-- An open book under a brass lamp: three spines and a page edge. -->
+  <path d="M6 9h8.5a1.5 1.5 0 0 1 1.5 1.5V24a3 3 0 0 0-3-2H6z" fill="#EDE4D3"/>
+  <path d="M26 9h-8.5a1.5 1.5 0 0 0-1.5 1.5V24a3 3 0 0 1 3-2h7z" fill="#A79B85"/>
+  <rect x="15" y="9" width="2" height="15" fill="#C9A227"/>
+</svg>

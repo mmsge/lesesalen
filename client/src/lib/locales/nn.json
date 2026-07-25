@@ -1,0 +1,211 @@
+{
+  "app": {
+    "name": "Lesesalen",
+    "tagline": "Berre bokinnlegga frå tidslina di.",
+    "skipToContent": "Gå til innhaldet"
+  },
+  "nav": {
+    "feed": "Lesesalen",
+    "about": "Om",
+    "privacy": "Personvern",
+    "settings": "Innstillingar",
+    "logIn": "Logg inn",
+    "logOut": "Logg ut",
+    "backToFeed": "Attende til lesesalen"
+  },
+  "login": {
+    "heading": "Logg inn på din eigen instans",
+    "lead": "Lesesalen er ein klient. Du loggar inn på tenaren din, og token-et blir verande i nettlesaren din.",
+    "domainLabel": "Domenet til instansen din",
+    "domainPlaceholder": "til dømes chaos.social",
+    "domainHelp": "Skriv domenet, ikkje brukarnamnet. Du kan lima inn heile adressa om du vil.",
+    "submit": "Hald fram til instansen",
+    "working": "Registrerer …",
+    "returning": "Fullfører innlogginga …",
+    "errorDomain": "Det ser ikkje ut som eit domene. Prøv til dømes chaos.social.",
+    "errorApps": "Fekk ikkje registrert Lesesalen hos instansen. Kontroller domenet og prøv på nytt.",
+    "errorToken": "Innlogginga vart ikkje fullført. Prøv på nytt.",
+    "errorState": "Svaret frå instansen stemde ikkje med førespurnaden. Innlogginga vart avbroten av tryggleiksomsyn.",
+    "errorDenied": "Du avviste tilgangen. Ingenting vart lagra."
+  },
+  "landing": {
+    "heading": "Berre bokinnlegga.",
+    "lead": "BookWyrm har ingen open API, men federerer. Kvart BookWyrm-innlegg når tidslina di på Mastodon som eit vanleg notat — utan terningkastet, utan tittelen på omtalen, utan sitatet og utan lenkja til boka. Lesesalen hentar det attende og set det opp som fem ulike kort.",
+    "principleHeading": "Du ser eit innlegg fordi du følgjer kontoen",
+    "principle": "Du ser eit innlegg fordi du følgjer kontoen, eller fordi nokon du følgjer har boosta det. Akkurat som på Mastodon. Ikkje noko meir.",
+    "noCrawlerHeading": "Ingen krypar",
+    "noCrawler": "Lesesalen går ikkje gjennom fediversen og samlar BookWyrm-innlegg i ein database. Innlegga er offentlege, men offentleg er ikkje det same som å ha samtykt til å bli aggregert og servert på nytt av ein tredjepart forfattaren aldri har høyrt om.",
+    "sampleHeading": "Slik ser dei fem korta ut",
+    "sampleNote": "Døma nedanfor er oppdikta. Ein framand som kjem hit, ser aldri kva andre les.",
+    "cta": "Logg inn med din eigen instans"
+  },
+  "feed": {
+    "loading": "Hentar tidslina …",
+    "searchingBack": "Leitar bakover i tidslina …",
+    "searchingBackDetail": "Ei heimetidsline er for det meste ikkje bøker, så fyrste skjermen kan vera tynn.",
+    "loadMore": "Hent fleire",
+    "empty": "Ingen bokinnlegg endå.",
+    "emptyDetail": "Anten har ingen du følgjer lagt ut noko på BookWyrm i det siste, eller så må me leita lenger bakover.",
+    "gather": "Hent frå BookWyrm-kontoane eg følgjer",
+    "gatherHelp": "Hentar innlegga direkte frå kvar BookWyrm-konto du følgjer, i staden for å venta på at dei dukkar opp i tidslina. Førespurnadene går frå nettlesaren din til din eigen instans.",
+    "gathering": "Hentar frå {count} kontoar …",
+    "end": "Ikkje meir å henta.",
+    "error": "Noko gjekk gale under henting.",
+    "retry": "Prøv på nytt",
+    "sessionExpired": "Instansen godtok ikkje token-et lenger. Du må logga inn på nytt."
+  },
+  "kind": {
+    "omtale": "Omtale",
+    "vurdering": "Terningkast",
+    "kommentar": "Kommentar",
+    "sitat": "Sitat",
+    "lesestatus": "Lesestatus"
+  },
+  "status": {
+    "vil-lesa": "Vil lesa",
+    "byrja": "Byrja på",
+    "ferdig": "Ferdig med",
+    "slutta": "Slutta på",
+    "ukjend": "Lesestatus"
+  },
+  "card": {
+    "boostedBy": "{name} boosta",
+    "showContent": "Vis meldinga",
+    "hideContent": "Skjul meldinga",
+    "contentWarning": "Innhaldsåtvaring",
+    "ratingOf": "{rating} av 5",
+    "noRating": "Utan terningkast",
+    "page": "side {page} av {pages}",
+    "pageNoTotal": "side {page}",
+    "percent": "{percent} % ute i boka",
+    "byAuthor": "av {authors}",
+    "unknownBook": "Ukjend bok",
+    "openOriginal": "Opne på {domain}",
+    "openBook": "Sjå boka på BookWyrm",
+    "coverAlt": "Omslag: {title}",
+    "noCover": "Utan omslag"
+  },
+  "filter": {
+    "heading": "Filter",
+    "kind": "Type",
+    "person": "Person",
+    "book": "Bok",
+    "clear": "Nullstill",
+    "clearOne": "Fjern filteret {label}",
+    "showing": "Viser {shown} av {total} innlegg",
+    "linkable": "Filtera ligg i adressa, så du kan dela eller bokmerkja utsnittet."
+  },
+  "composer": {
+    "reply": "Svar",
+    "replyTo": "Svar til {name}",
+    "placeholder": "Skriv svaret ditt …",
+    "send": "Send svaret",
+    "sending": "Sender …",
+    "cancel": "Avbryt",
+    "sent": "Svaret vart lagt ut.",
+    "error": "Fekk ikkje lagt ut svaret.",
+    "caveat": "Svaret blir eit vanleg Mastodon-innlegg, ikkje ein BookWyrm-kommentar. Mastodon kan ikkje laga BookWyrm-objekt.",
+    "visibility": "Synlegheit",
+    "visibilityPublic": "Offentleg",
+    "visibilityUnlisted": "Uoppført",
+    "visibilityPrivate": "Berre følgjarar",
+    "contentWarning": "Innhaldsåtvaring (valfritt)"
+  },
+  "action": {
+    "favourite": "Favoritt",
+    "unfavourite": "Fjern favoritt",
+    "boost": "Boost",
+    "unboost": "Fjern boost",
+    "replyTo": "Svar",
+    "byPerson": "Sjå bokinnlegga til denne personen",
+    "byBook": "Filtrer på denne boka"
+  },
+  "author": {
+    "heading": "Bokinnlegg frå {name}",
+    "lead": "Henta frå din eigen instans, med ditt eige token. Nøyaktig det Mastodon ville vist deg.",
+    "loading": "Hentar innlegg …",
+    "empty": "Fann ingen bokinnlegg frå denne kontoen.",
+    "back": "Attende"
+  },
+  "settings": {
+    "heading": "Innstillingar",
+    "language": "Språk",
+    "languageNn": "Nynorsk",
+    "languageEn": "English",
+    "account": "Konto",
+    "loggedInAs": "Innlogga på {domain}",
+    "ephemeral": "Logg ut når eg lukkar fana",
+    "ephemeralHelp": "For maskiner du deler med andre. Token-et blir då liggjande i sessionStorage og forsvinn når fana blir lukka.",
+    "logOut": "Logg ut",
+    "loggingOut": "Loggar ut …",
+    "logOutHelp": "Token-et blir fyrst trekt attende hos instansen din, deretter sletta frå nettlesaren."
+  },
+  "about": {
+    "title": "Om Lesesalen",
+    "sections": [
+      {
+        "heading": "Kva dette er",
+        "paragraphs": [
+          "Lesesalen er ein Mastodon-klient som viser deg bokinnlegga og ingenting anna. Fem typar bokinnlegg, fem ulike uttrykk — sett opp som ein lesesal i staden for ei mikrobloggtidsline.",
+          "BookWyrm har ingen open API, men federerer. Kvart BookWyrm-innlegg når heimetidslina di på Mastodon som eit vanleg notat. Problemet er at Mastodon kastar dei rike felta: terningkastet, tittelen på omtalen, det siterte avsnittet, kor langt i boka lesaren er, og lenkja til boka er alle eigne ActivityPub-eigenskapar som Mastodon ikkje har nokon stad å gjera av."
+        ]
+      },
+      {
+        "heading": "Kvifor det finst ein tenar",
+        "paragraphs": [
+          "Opphavsobjektet er framleis offentleg og adresserbart. Hentar du det med Accept: application/activity+json, får du att heile objektet — type, terningkast, tittel, sitat, posisjon og lenkje til utgåva.",
+          "Nettlesaren kan ikkje gjera dette sjølv, fordi BookWyrm-instansar ikkje sender CORS-hovud for ActivityPub-henting. Nett det er heile grunnen til at det finst ein tenar i dette prosjektet. Han gjer tri ting: slår opp kva programvare ein instans køyrer, hentar opphavsobjektet på nytt, og mellomlagrar bibliografiske data og omslag."
+        ]
+      },
+      {
+        "heading": "Kva dette med vilje ikkje er",
+        "paragraphs": [
+          "Du ser eit innlegg fordi du følgjer kontoen, eller fordi nokon du følgjer har boosta det. Akkurat som på Mastodon. Ikkje noko meir.",
+          "Difor finst det ingen krypar. Lesesalen går ikkje gjennom fediversen og samlar BookWyrm-innlegg i ein database. Innlegga er offentlege, men offentleg er ikkje det same som å ha samtykt til å bli aggregert, indeksert og servert på nytt av ein tredjepart forfattaren aldri har høyrt om. Ein BookWyrm-brukar som legg ut ei bokmelding til følgjarane sine, har ikkje meldt seg på å vera med i eit korpus.",
+          "Av same grunn finst det ingen tidsline for utlogga, og ingen stad å oppdaga nye innlegg. Ein framand som kjem hit, ser ei forklaring og nokre oppdikta døme — ikkje kva andre les.",
+          "Det eine unntaket er å klikka på ein person og sjå innlegga deira. Det er ein heilt vanleg klientfunksjon: førespurnaden går gjennom din eigen instans, med ditt eige token, og viser nøyaktig det Mastodon ville vist deg."
+        ]
+      },
+      {
+        "heading": "Svar",
+        "paragraphs": [
+          "Du kan svara, favorittmerkja og boosta gjennom Mastodon-API-et. Eit svar blir eit vanleg Mastodon-innlegg — ikkje ein BookWyrm-kommentar. Mastodon kan ikkje laga BookWyrm-objekt, og det seier me heller ein gong for mykje enn ein gong for lite."
+        ]
+      },
+      {
+        "heading": "Kontakt",
+        "paragraphs": [
+          "Lesesalen hentar frå instansar me ikkje eig, og prøver å vera ein høfleg gjest: éin førespurnad i sekundet per domene, ærleg User-Agent, og me respekterer 429 og Retry-After. Er noko likevel til bry, ta kontakt, så rettar me det."
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "title": "Personvern",
+    "lead": "Kort, og sant.",
+    "points": [
+      { "term": "Ingen brukarkontoar", "detail": "Tenaren har ingen brukartabell. Det finst inga innlogging på tenarsida i det heile." },
+      { "term": "Ingen token", "detail": "Innlogginga di blir verande i nettlesaren og går berre til din eigen instans." },
+      { "term": "Inga følgjeliste", "detail": "Den sosiale grafen din blir aldri send til tenaren. Det einaste som blir sendt, er nakne domenenamn, i bolkar, for å svara på spørsmålet «køyrer denne instansen BookWyrm»." },
+      { "term": "Inga lesehistorikk", "detail": "Innhaldet i innlegga går gjennom minnet og blir kasta. Ein omstart tømer alt, og det er slik det skal vera." },
+      { "term": "Ingen analyse, ingen infokapslar, ingen tredjepartar", "detail": "Ingen sporing, ingen CDN, ingen eksterne skript eller skrifter." }
+    ],
+    "keptHeading": "Kva som faktisk blir lagra",
+    "kept": [
+      "Kva fediversinstansar som køyrer BookWyrm. Dette er infrastruktur, ikkje personopplysningar, og eitt oppslag tener alle.",
+      "Bibliografiske data og omslagsbilete for bøker som har vore innom: tittel, forfattarar, sidetal, ISBN og lenkje til BookWyrm. Ei bokutgåve er ikkje personopplysningar om nokon.",
+      "Omslag blir henta éin gong, når boka fyrst blir mellomlagra, og deretter servert herifrå. Difor når IP-adressa di aldri instansen som eig biletet, og fordi hentinga skjer ved mellomlagring og ikkje per visning, lærer tenaren ingenting om kven som såg på kva."
+    ],
+    "caveatHeading": "Det eine ærlege atterhaldet",
+    "caveat": "Endepunktet som hentar opphavsobjekta, tek imot URI-ane til innlegga som blir viste. Tenaren ser difor, i det korte auget det tek, kva innlegg nokon les. Dei blir ikkje logga, ikkje lagra og ikkje knytte til nokon identitet, og mellomlageret er felles, så førespurnadene lèt seg ikkje tilskriva ein person. Men det er ikkje ingenting, og då bør det stå her i staden for å bli pynta bort.",
+    "rightsHeading": "Innsyn og sletting",
+    "rights": "Det finst ingen eksportfunksjon og ingen slettefunksjon, fordi det ikkje er noko å eksportera og ikkje noko å sletta. Vil du fjerna innlogginga, loggar du ut: token-et blir fyrst trekt attende hos instansen din, deretter sletta frå nettlesaren.",
+    "updated": "Sist endra {date}."
+  },
+  "error": {
+    "generic": "Noko gjekk gale.",
+    "notFound": "Fann ikkje sida.",
+    "notFoundDetail": "Adressa finst ikkje i Lesesalen.",
+    "offline": "Får ikkje kontakt. Kontroller nettsambandet."
+  }
+}
