@@ -1,5 +1,7 @@
 # Lesesalen
 
+[![deployed](https://img.shields.io/endpoint?url=https://utrulla.msge.no/badge/mmsge/lesesalen)](https://lesesalen.msge.no)
+
 **A Mastodon web client that shows you only the book posts.**
 
 `lesesalen.msge.no` · slug `lesesalen` · port `4023`
