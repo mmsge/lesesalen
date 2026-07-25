@@ -47,6 +47,14 @@ an ADR; read it before working around it.
 - **The URI is the type discriminator, not the `type` field.** BookWyrm serves
   third parties a plain `Note`; trusting `type` collapses all five card kinds
   into one (ADR 0007).
+- **A card renders before its edition is fetched.** `outbox._parse_item` is
+  synchronous and fetch-free, and `collect()` does not await `books.ensure_book`;
+  author and title come off the cover attachment's name (`bok_kladd`), and the
+  edition is resolved after the response. Re-adding that `await` looks like a
+  tidy-up and silently restores a 23-second page load (ADR 0010).
+- **`publisert` is the client's only date.** `parse_object` must keep returning
+  the origin's `published`, or every card dates from 1970 *and* the feed sorts on
+  `NaN` — which looks plausible and is not (ADR 0010).
 - **The client is built in CI and committed to `client/dist`.** The box never
   runs Node. Edit `client/src`, run `make client`, commit the result (ADR 0001).
 
@@ -57,7 +65,8 @@ app/            FastAPI server — the only reason it exists is that BookWyrm
                 instances send no CORS headers for ActivityPub fetches
   netfetch.py   every outbound request, and every guard on them
   enrich.py     ActivityPub object -> the five card kinds
-  outbox.py     a followed actor's outbox -> a page of cards (the feed)
+  outbox.py     a followed actor's outbox -> a page of cards (the feed);
+                pages are shared between readers for a few minutes (ADR 0011)
   books.py      bibliographic data + covers (raster-only, re-encoded)
   instances.py  nodeinfo probing; the allowlist everything else keys off
   sanitise.py   nh3, server side

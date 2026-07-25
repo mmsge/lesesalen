@@ -71,6 +71,17 @@ https://bookwyrm.social/user/mvrkws          → outbox: …/user/mvrkws/outbox
 That is the whole reason the feed is built the way it is. One throttled request
 per fifteen posts instead of per one.
 
+**And the page already knows what book each post is about.** BookWyrm names a
+post's cover attachment after its edition — `"Matt Dinniman: This Inevitable Ruin
+(Hardcover, 2026, Michael Joseph Ltd)"` — so author and title need no fetch at
+all. 98% of items carry one. Cards render from that immediately and the edition is
+resolved behind the response, which took a cold page from **23.4 s to 3.8 s**, and
+5 ms for the next reader who follows the same account. Covers still come from our
+own origin, a beat later, because a reader's IP has no business reaching a CDN
+they never chose
+([ADR 0010](docs/decision-records/0010-cards-render-before-their-editions-are-fetched.md),
+[ADR 0011](docs/decision-records/0011-outbox-pages-are-shared-between-readers.md)).
+
 **The browser cannot do this, because BookWyrm instances do not send CORS
 headers for ActivityPub fetches. That single fact is the entire reason a server
 exists in this project.**

@@ -26,6 +26,41 @@ _NODEINFO_RELS = {
 _probe_semaphore = asyncio.Semaphore(4)
 _inflight: dict[str, asyncio.Task] = {}
 
+# Instances known to run BookWyrm, seeded at boot so the first reader to follow
+# somebody on one of them does not wait for two nodeinfo round-trips.
+#
+# This is a cache warm-up, not a directory: nothing reads it to *find* instances,
+# it only pre-answers "does this host run BookWyrm" for hosts a reader has
+# already asked about. Entries expire on the normal 30-day TTL and are re-probed
+# like any other, so a host that leaves BookWyrm — or dies — self-corrects
+# without anyone editing this list.
+SEED_BOOKWYRM = (
+    "bookwyrm.social",
+    "books.babb.no",
+    "bookrastinating.com",
+    "wyrms.de",
+    "ramblingreaders.org",
+    "bookwyrm.tokyo",
+    "book.dansmonorage.blue",
+    "biblioteca.rocks",
+    "reading.taks.garden",
+    "bw.diaspodon.fr",
+)
+
+
+def seed() -> None:
+    """Pre-populate the allowlist with the instances above.
+
+    Only fills gaps: a real probe result always wins, and an existing row is left
+    alone so a host we have since found *not* to be BookWyrm is not resurrected
+    by a stale entry in the tuple above.
+    """
+    known = db.get_instances(list(SEED_BOOKWYRM))
+    for domain in SEED_BOOKWYRM:
+        normalised = netfetch.normalise_domain(domain)
+        if normalised and normalised not in known:
+            db.put_instance(normalised, "bookwyrm", None, True)
+
 
 async def _fetch_json(url: str, host: str) -> Any:
     fetched = await netfetch.fetch(

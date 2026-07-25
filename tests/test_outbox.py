@@ -15,12 +15,13 @@ from __future__ import annotations
 
 import json
 import pathlib
+from datetime import datetime
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 
-from app import config, db, enrich, main, netfetch, outbox
+from app import config, db, enrich, instances, main, netfetch, outbox, ratelimit
 
 HOST = "bookwyrm.social"
 ACTOR = f"https://{HOST}/user/lesar"
@@ -67,6 +68,13 @@ OUTBOX_PAGE_1 = {
             "attributedTo": ACTOR,
             "content": "<p>Halvvegs, og det held.</p>",
             "inReplyToBook": f"https://{HOST}/book/9",
+            # BookWyrm names the cover attachment after the edition, which is
+            # where author and title come from before anything is fetched.
+            "attachment": [{
+                "type": "Document",
+                "url": f"https://{HOST}/images/covers/9.jpg",
+                "name": "Sigrid Undset: Kransen (Paperback, 1920, Aschehoug)",
+            }],
         },
         {
             # A review arrives as an Article, and the rating survives only inside
@@ -152,8 +160,18 @@ def served(tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch):
         )
 
     monkeypatch.setattr(netfetch, "fetch", fake_fetch)
+    # Every module-level cache, or one test's fetches satisfy the next one's and
+    # the `fetched` assertions quietly stop meaning anything.
     outbox._actors.clear()
+    outbox._pages.clear()
     enrich._cache.clear()
+    # The per-IP bucket is module-level too, and a whole test module's worth of
+    # requests from one address will exhaust the burst and start answering 429 —
+    # which shows up as a baffling KeyError on the response body, not as a
+    # rate-limit failure. Give every test a full bucket.
+    monkeypatch.setattr(
+        ratelimit, "buckets", ratelimit.TokenBuckets(config.RATE_PER_SEC, config.RATE_BURST)
+    )
 
     with TestClient(main.app) as test_client:
         yield test_client, fetched
@@ -213,6 +231,147 @@ def test_uri_segment_still_decides_the_kind(served) -> None:
     assert review["tittel"] == "Eit år i eit menneskeliv"
 
 
+def test_every_card_carries_the_origins_publication_time(served) -> None:
+    """Without this the client sorts on NaN and every card dates from 1970.
+
+    The timeline feed read the date off the Mastodon status, so nothing here ever
+    needed it; the outbox feed has no other source.
+    """
+    client, _ = served
+    allowlist()
+
+    body = client.post("/api/samling", json={"aktor": ACTOR, "side": 1}).json()
+    assert body["innslag"], "expected cards"
+    for entry in body["innslag"]:
+        assert entry["publisert"], f"no publication time on {entry['kjelde']}"
+        # Parseable, not merely present.
+        datetime.fromisoformat(entry["publisert"].replace("Z", "+00:00"))
+
+
+def test_unparseable_publication_times_become_null_not_rubbish(served) -> None:
+    """`Date.parse` of a bad string is silently NaN, which renders as 1970."""
+    for bad in ("", "  ", "not a date", "2026-13-45T99:99:99Z", None, 12345):
+        parsed = enrich.parse_object(
+            {"id": f"{ACTOR}/comment/9", "type": "Note", "published": bad,
+             "content": "<p>x</p>", "inReplyToBook": f"https://{HOST}/book/9"},
+            HOST,
+            f"{ACTOR}/comment/9",
+        )
+        assert parsed["publisert"] is None
+
+
+def test_a_card_is_complete_before_its_edition_is_fetched(served) -> None:
+    """Author and title come off the cover attachment's name (`bok_kladd`).
+
+    This is what removed the ~23 s wait: the page no longer blocks on edition
+    fetches, author fetches and cover re-encodes to say what book it is about.
+    """
+    client, _ = served
+    allowlist()
+
+    body = client.post("/api/samling", json={"aktor": ACTOR, "side": 1}).json()
+    by_uri = {entry["kjelde"]: entry for entry in body["innslag"]}
+    draft = by_uri[f"{ACTOR}/comment/2"]["bok_kladd"]
+    assert draft["tittel"] == "Kransen"
+    assert draft["forfattarar"] == ["Sigrid Undset"]
+    assert draft["format"] == "Paperback"
+    assert draft["aar"] == 1920
+    # And the book id is knowable without a fetch, so the client can ask for the
+    # full record once it exists.
+    assert by_uri[f"{ACTOR}/comment/2"]["bok"]
+
+
+@pytest.mark.parametrize(
+    "name,expected",
+    [
+        (
+            "Matt Dinniman: This Inevitable Ruin (Hardcover, 2026, Michael Joseph Ltd)",
+            {"tittel": "This Inevitable Ruin", "forfattarar": ["Matt Dinniman"],
+             "format": "Hardcover", "aar": 2026},
+        ),
+        (
+            "Alice Oseman: Heartstopper (GraphicNovel, 2026, Hodder Children's Books)",
+            {"tittel": "Heartstopper", "forfattarar": ["Alice Oseman"],
+             "format": "GraphicNovel", "aar": 2026},
+        ),
+        # No author segment at all.
+        ("Kransen", {"tittel": "Kransen", "forfattarar": [], "format": None, "aar": None}),
+        # Two authors.
+        (
+            "Ann Doe, Bo Roe: Saman (Paperback, 1999, X)",
+            {"tittel": "Saman", "forfattarar": ["Ann Doe", "Bo Roe"],
+             "format": "Paperback", "aar": 1999},
+        ),
+        # A parenthesis that is part of the title, with nothing recognisable in it.
+        (
+            "A Writer: A Book (Which Is Long)",
+            {"tittel": "A Book", "forfattarar": ["A Writer"], "format": None, "aar": None},
+        ),
+    ],
+)
+def test_edition_names_parse(name: str, expected: dict[str, Any]) -> None:
+    """The shape is BookWyrm's own `Edition.__str__`; mirrors bokhylla's parser."""
+    assert enrich._edition_from_name(name) == expected
+
+
+def test_a_nonsense_attachment_name_yields_no_draft() -> None:
+    for bad in (None, "", "   ", 42, {"a": 1}):
+        assert enrich._edition_from_name(bad) is None
+
+
+def test_the_internal_book_url_never_reaches_the_client(served) -> None:
+    """`_bok_url` is our bookkeeping for post-response resolution, not a field."""
+    client, _ = served
+    allowlist()
+
+    samling = client.post("/api/samling", json={"aktor": ACTOR, "side": 1}).json()
+    assert not any(k.startswith("_") for entry in samling["innslag"] for k in entry)
+
+    # The same entries are served from the shared cache by /api/berik.
+    berik = client.post("/api/berik", json={"uriar": [f"{ACTOR}/comment/2"]}).json()
+    for entry in berik["innslag"].values():
+        if entry:
+            assert not any(k.startswith("_") for k in entry)
+
+
+def test_unresolved_editions_are_omitted_not_404(served) -> None:
+    """A card whose edition is still being fetched must not look like an error."""
+    client, _ = served
+    allowlist()
+
+    samling = client.post("/api/samling", json={"aktor": ACTOR, "side": 1}).json()
+    ids = [entry["bok"] for entry in samling["innslag"] if entry.get("bok")]
+    assert ids
+
+    response = client.post("/api/boker", json={"ider": ids + ["deadbeef"]})
+    assert response.status_code == 200
+    assert "deadbeef" not in response.json()["boker"]
+    assert response.headers["cache-control"] == "no-store"
+
+
+def test_boker_rejects_bad_bodies_and_sanitises_ids(served) -> None:
+    client, _ = served
+    assert client.post("/api/boker", json={"ider": "nope"}).status_code == 400
+    assert client.post("/api/boker", content=b"{not json").status_code == 400
+    # Ids go straight into a lookup, so they are filtered to hex like /api/bok.
+    assert client.post(
+        "/api/boker", json={"ider": ["../../etc/passwd", 7, None, "' OR 1=1--"]}
+    ).json()["boker"] == {}
+
+
+def test_a_second_reader_does_not_refetch_the_same_page(served) -> None:
+    """Two readers following the same popular account: one origin fetch."""
+    client, fetched = served
+    allowlist()
+
+    client.post("/api/samling", json={"aktor": ACTOR, "side": 1})
+    enrich._cache.clear()  # a different reader's posts are not cached for them
+    before = fetched.count(f"{OUTBOX}?page=1")
+    client.post("/api/samling", json={"aktor": ACTOR, "side": 1})
+
+    assert fetched.count(f"{OUTBOX}?page=1") == before == 1
+
+
 def test_the_shelf_is_measured_from_the_collection_root(served) -> None:
     """`totalItems` and the page count live on the root, not on the actor."""
     client, fetched = served
@@ -264,13 +423,38 @@ def test_parsed_posts_warm_the_shared_enrichment_cache(served) -> None:
 # ── the guards ───────────────────────────────────────────────────────────────
 
 def test_an_actor_on_an_unconfirmed_host_is_refused_without_fetching(served) -> None:
-    """The allowlist gate, as on /api/berik: no nodeinfo entry, no fetch."""
-    client, fetched = served
-    # Deliberately no allowlist() call.
+    """The allowlist gate, as on /api/berik: no nodeinfo entry, no fetch.
 
-    response = client.post("/api/samling", json={"aktor": ACTOR, "side": 1})
+    The host here must be one the seed list does not cover — `bookwyrm.social` is
+    pre-authorised at boot, so it would prove nothing.
+    """
+    client, fetched = served
+    assert "unconfirmed.example" not in instances.SEED_BOOKWYRM
+
+    response = client.post(
+        "/api/samling",
+        json={"aktor": "https://unconfirmed.example/user/x", "side": 1},
+    )
     assert response.status_code == 400
     assert fetched == []
+
+
+def test_seeded_instances_are_allowlisted_without_a_probe(served) -> None:
+    """The seed is a cache warm-up: no reader should pay for the first probe."""
+    client, fetched = served
+    assert instances.is_confirmed_bookwyrm("bookwyrm.social")
+    assert fetched == []  # seeding makes no network request
+
+
+def test_seeding_never_overrides_a_real_probe_result(served, monkeypatch) -> None:
+    """A host we have found *not* to be BookWyrm must not be resurrected."""
+    client, _ = served
+    domain = instances.SEED_BOOKWYRM[0]
+    db.put_instance(domain, "mastodon", "4.3.0", False)
+
+    instances.seed()
+
+    assert instances.is_confirmed_bookwyrm(domain) is False
 
 
 def test_a_non_bookwyrm_host_is_refused_even_when_probed(served) -> None:

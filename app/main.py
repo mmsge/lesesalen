@@ -32,6 +32,7 @@ _shell: shell.Shell | None = None
 async def lifespan(_app: FastAPI):
     global _shell
     db.connect()
+    instances.seed()
     _shell = shell.Shell()
     yield
     await netfetch.aclose()
@@ -233,6 +234,40 @@ async def api_samling(request: Request) -> Response:
     except outbox.OutboxError as refusal:
         return JSONResponse({"feil": refusal.reason}, status_code=400)
     return JSONResponse(collected, headers={"Cache-Control": "no-store"})
+
+
+@app.post("/api/boker")
+async def api_boker(request: Request) -> Response:
+    """In: book ids. Out: the ones we have.
+
+    `/api/samling` answers before it has fetched the editions a page mentions, so
+    the client comes back for them. One request for the whole screen rather than
+    one per card — and, unlike a 404 per unresolved id, this says "not yet"
+    without filling the reader's console with failed requests.
+    """
+    payload = await _json_body(request)
+    if payload is None:
+        return JSONResponse({"feil": "ugyldig JSON"}, status_code=400)
+    raw = payload.get("ider")
+    if not isinstance(raw, list):
+        return JSONResponse({"feil": "ider må vera ei liste"}, status_code=400)
+
+    found: dict[str, Any] = {}
+    for identifier in raw[: config.MAX_BOOK_IDS_PER_REQUEST]:
+        if not isinstance(identifier, str):
+            continue
+        safe = _safe_id(identifier)
+        if not safe or safe in found:
+            continue
+        record = db.get_book(safe)
+        if record:
+            found[safe] = books.public_book(record)
+    return JSONResponse(
+        {"boker": found},
+        # Whether an edition exists yet changes minute to minute while a sweep is
+        # running, so this must not be cached.
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @app.api_route("/api/bok/{book_id}", methods=["GET", "HEAD"])

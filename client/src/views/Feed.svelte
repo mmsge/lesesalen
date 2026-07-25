@@ -59,7 +59,7 @@
     if (feed.phase === 'breidde')
       return t('samling.sweeping', {
         done: formatNumber(feed.swept),
-        total: formatNumber(feed.shelves),
+        total: formatNumber(feed.sweeping || feed.shelves),
       });
     if (feed.phase === 'djupn') {
       const { read, total } = depth();
