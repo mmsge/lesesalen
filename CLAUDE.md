@@ -2,11 +2,16 @@
 
 **A Mastodon web client that shows you only the book posts.**
 
-BookWyrm has no public API, but it federates. Every BookWyrm post reaches a
-Mastodon home timeline as a plain Note — with the rating, review title, quoted
-passage, position and book link stripped out, because they are custom
-ActivityPub properties Mastodon has no column for. Lesesalen re-fetches the
-origin object and puts them back, as five distinct kinds of card.
+BookWyrm has no public API, but it federates. Its posts carry a rating, review
+title, quoted passage, position and book link that Mastodon has no column for and
+throws away. Lesesalen goes back to the origin ActivityPub objects and puts them
+back, as five distinct kinds of card.
+
+The feed is **the outboxes of the BookWyrm accounts you follow**, not your home
+timeline: the follow list is read in the browser with the reader's own token, and
+each actor's outbox is walked through `/api/samling`. One outbox page yields
+fifteen already-rich objects, where the timeline needed one fetch per post
+(ADR 0008).
 
 ## The rules that are not negotiable
 
@@ -26,10 +31,19 @@ an ADR; read it before working around it.
 - **`/api/berik` is an SSRF boundary.** Allowlist first, https only, address
   filtering with DNS pinning, redirect re-validation, size caps, and no request
   logging. Every guard is load-bearing (ADR 0003).
-- **No crawler, no logged-out feed, no post storage.** You see a post because
-  you follow that account or someone you follow boosted it. Same as Mastodon
-  (ADR 0002). The tell that this is being undone is a table with posts in it.
-- **Post enrichment stays in memory.** Never write it to SQLite (ADR 0005).
+- **No crawler, no logged-out feed, no post storage.** You see a post because you
+  follow that account (ADR 0008, superseding 0002 — which also said "or someone
+  you follow boosted it", and boosts did not survive the move to outboxes). The
+  server walks nothing on its own and there is no background job: every fetch
+  happens because a reader is present. The tell that this is being undone is a
+  table with posts in it.
+- **Post enrichment stays in memory** on the server. Never write it to SQLite
+  (ADR 0005). The reader's *browser* may persist their own collection in
+  IndexedDB — and must not when `storage.isEphemeral()` is set (ADR 0009).
+- **`/api/samling` builds its own URLs.** It takes an actor URI and an integer
+  page, never a URL from the caller, and the actor's outbox must be on the
+  actor's own host. Both stop it becoming a fetch primitive aimed through the
+  allowlist (ADR 0008).
 - **The URI is the type discriminator, not the `type` field.** BookWyrm serves
   third parties a plain `Note`; trusting `type` collapses all five card kinds
   into one (ADR 0007).
@@ -43,6 +57,7 @@ app/            FastAPI server — the only reason it exists is that BookWyrm
                 instances send no CORS headers for ActivityPub fetches
   netfetch.py   every outbound request, and every guard on them
   enrich.py     ActivityPub object -> the five card kinds
+  outbox.py     a followed actor's outbox -> a page of cards (the feed)
   books.py      bibliographic data + covers (raster-only, re-encoded)
   instances.py  nodeinfo probing; the allowlist everything else keys off
   sanitise.py   nh3, server side

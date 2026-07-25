@@ -1,6 +1,6 @@
 # 0002 — Lesesalen is a client, not a service: no crawler, no logged-out feed
 
-- **Status:** Accepted
+- **Status:** Superseded by [0008](0008-the-feed-is-the-followed-outboxes.md)
 - **Date:** 2026-07-25
 - **Contributors:** Claude (agent decision — no human input on the technical
   choice; the governing principle and its consequences were stated in the

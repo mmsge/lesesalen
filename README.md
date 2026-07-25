@@ -11,23 +11,30 @@ Quotations break the column entirely.
 
 ## What it is, and what it deliberately is not
 
-BookWyrm has no public API, but it federates. Every BookWyrm post reaches your
-Mastodon home timeline as a plain Note. Lesesalen is a Mastodon client that
-shows you those posts and nothing else, in a reading room built for books
-instead of for microblogging.
+BookWyrm has no public API, but it federates. Lesesalen reads your follow list in
+your browser, keeps the accounts on BookWyrm instances, and assembles a feed from
+**their own ActivityPub outboxes** — a reading room built for books instead of
+for microblogging.
 
 **It is a client, not a service.** The governing principle:
 
-> You see a post because you follow that account, or because someone you follow
-> boosted it. Same as Mastodon. Nothing more.
+> You see a post because you follow that account. Same as Mastodon, minus boosts.
 
-So there is no crawler, no logged-out feed and no discovery surface. Those posts
-are public, but public is not the same as consenting to be aggregated, indexed
-and re-served by a third party the author never heard of. A stranger arriving at
-the site sees an explainer and some invented sample cards, not other people's
-reading. The one broadening is clicking an author to see their posts — a normal
-client affordance that goes through the reader's own instance with the reader's
-own token. See [ADR 0002](docs/decision-records/0002-a-client-not-a-crawler.md).
+So there is no crawler, no logged-out feed and no discovery surface. The server
+walks nothing on its own and there is no background job: every fetch happens
+because a reader is present and follows that account. Those posts are public, but
+public is not the same as consenting to be aggregated, indexed and re-served by a
+third party the author never heard of. A stranger arriving at the site sees an
+explainer and some invented sample cards, not other people's reading. See
+[ADR 0008](docs/decision-records/0008-the-feed-is-the-followed-outboxes.md),
+which supersedes 0002.
+
+**Why outboxes and not the home timeline.** The timeline version cost one
+throttled origin fetch per post, was mostly not books so the first screen was
+thin, and only ever reached the slice your instance had delivered. An outbox page
+returns **fifteen already-rich objects for one request**, and reaches the whole
+back catalogue. What that gives up is boosts and followers-only posts — a boosted
+book post is in nobody's followed outbox.
 
 ## The key technical insight
 
@@ -50,6 +57,20 @@ Fetching that URI with `Accept: application/activity+json` returns the object,
 and `inReplyToBook` leads to the Edition with title, authors, cover, pages and
 ISBN.
 
+**And an outbox serves fifteen of them at once.** An actor document says where its
+outbox is; the collection root says how big it is; each page hands back fifteen of
+those same objects, newest first, in the same representation a single-object fetch
+returns:
+
+```
+https://bookwyrm.social/user/mvrkws          → outbox: …/user/mvrkws/outbox
+…/user/mvrkws/outbox                         → totalItems 1092, last: …?page=73
+…/user/mvrkws/outbox?page=1                  → 15 orderedItems
+```
+
+That is the whole reason the feed is built the way it is. One throttled request
+per fifteen posts instead of per one.
+
 **The browser cannot do this, because BookWyrm instances do not send CORS
 headers for ActivityPub fetches. That single fact is the entire reason a server
 exists in this project.**
@@ -65,20 +86,29 @@ real type discriminator, and the rating is reconstructed from the review's
 ```
 Browser (Svelte)                          Server (FastAPI)
   |                                          |
-  |-- OAuth, timeline, replies, favs         |-- /api/instansar  (nodeinfo)
-  |   straight to the user's own instance    |-- /api/berik      (AP re-fetch)
-  |   token never leaves the browser         |-- /api/bok/<id>   (book + cover)
+  |-- OAuth, follow list, replies, favs      |-- /api/instansar  (nodeinfo)
+  |   straight to the user's own instance    |-- /api/samling    (outbox page)
+  |   token never leaves the browser         |-- /api/berik      (AP re-fetch)
+  |                                          |-- /api/bok/<id>   (book + cover)
+  |--- actor URIs, post URIs, domains ------>|
+  |<-- cards, book data ---------------------|
   |                                          |
-  |------- post URIs, domains -------------->|
-  |<------ enrichment, book data ------------|
-                                             |
-                                    SQLite: instances, books
-                                    Disk:   cover images
-                                    Memory: parsed posts, TTL
+IndexedDB: the reader's own collection    SQLite: instances, books
+  (skipped in ephemeral mode)             Disk:   cover images
+                                          Memory: parsed posts + actor
+                                                  outbox URLs, both TTL'd
 ```
 
-**The server never sees a token, a follow list, or a user identity.** There is no
-user table. There is no login on the server side at all.
+**The server never sees a token or a user identity.** There is no user table and
+no login on the server side at all.
+
+It does see **the actor URIs of accounts you follow**, one at a time, because
+that is what `/api/samling` takes. That is a real cost of the outbox design and
+[ADR 0008](docs/decision-records/0008-the-feed-is-the-followed-outboxes.md) states
+it rather than glossing it: the mitigation is that `/api/berik` already received
+URIs like `…/user/mvrkws/comment/123`, so which actors a reader reads was never
+hidden — and that these URIs are logged nowhere, stored nowhere, and answered
+`no-store`.
 
 | Stored | Contents | Why it is acceptable |
 |---|---|---|
@@ -88,7 +118,16 @@ user table. There is no login on the server side at all.
 
 Post enrichment lives in an **in-memory LRU with a TTL** and is never written to
 disk. A restart empties it, which is correct
-([ADR 0005](docs/decision-records/0005-enrichment-cache-is-memory-only.md)).
+([ADR 0005](docs/decision-records/0005-enrichment-cache-is-memory-only.md)). The
+same holds for the actor cache `/api/samling` keeps — its keys are the actor URIs
+of accounts somebody follows, so it is memory-only for exactly that reason.
+
+The reader's assembled collection *does* persist, in **IndexedDB in their own
+browser** — their own feed, on their own machine, like any fediverse client. Not
+when they have ticked "log me out when I close the tab": that reader is on a
+shared machine, and a durable on-disk archive of other people's reading is not
+what they asked for
+([ADR 0009](docs/decision-records/0009-the-collection-lives-in-the-readers-browser.md)).
 
 ## Security
 
@@ -107,6 +146,13 @@ successful XSS is a full account compromise for whoever is using the app.
   address filtering with DNS pinning, redirect re-validation, size caps, per-IP
   and per-domain rate limits, and no request logging — the URIs say what someone
   is reading ([ADR 0003](docs/decision-records/0003-berik-is-an-ssrf-boundary.md)).
+- `/api/samling` sits behind the same boundary, plus two of its own. It takes an
+  actor URI and an **integer** page and builds every URL it fetches itself —
+  passing the outbox's `next` link back through the caller would make it a way to
+  fetch arbitrary paths on an allowlisted host. And an actor's `outbox` must be on
+  the actor's own host, or a hostile actor document turns us into a fetch
+  amplifier aimed at a third party
+  ([ADR 0008](docs/decision-records/0008-the-feed-is-the-followed-outboxes.md)).
 - Covers are raster-only and re-encoded on ingest, because a malicious SVG
   served from our origin would be same-origin script
   ([ADR 0004](docs/decision-records/0004-covers-are-re-encoded-on-ingest.md)).
