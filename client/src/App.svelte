@@ -11,7 +11,7 @@
   import Settings from './views/Settings.svelte';
   import Author from './views/Author.svelte';
   import * as auth from './lib/auth.js';
-  import { reset } from './lib/feed.svelte.js';
+  import { forget } from './lib/collection.svelte.js';
   import { route, navigate, link } from './lib/router.svelte.js';
   import { t } from './lib/i18n.svelte.js';
 
@@ -44,7 +44,9 @@
 
   function onlogout() {
     account = null;
-    reset();
+    // Logging out clears the collection from storage too, not just from memory:
+    // it is a feed assembled from one reader's follow list (ADR 0009).
+    forget();
     navigate('/');
   }
 

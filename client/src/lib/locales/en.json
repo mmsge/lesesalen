@@ -30,29 +30,34 @@
   },
   "landing": {
     "heading": "Only the book posts.",
-    "lead": "BookWyrm has no public API, but it federates. Every BookWyrm post reaches your Mastodon timeline as a plain note — without the rating, without the review title, without the quoted passage and without the link to the book. Lesesalen fetches those back and lays them out as five distinct cards.",
+    "lead": "BookWyrm has no public API, but it federates. Its posts carry a rating, a review title, a quoted passage, how far into the book the reader is and a link to the book — fields Mastodon has no column for, and therefore throws away. Lesesalen reads the outboxes of the BookWyrm accounts you follow, recovers those fields and lays them out as five distinct kinds of card.",
     "principleHeading": "You see a post because you follow that account",
-    "principle": "You see a post because you follow that account, or because someone you follow boosted it. Same as Mastodon. Nothing more.",
+    "principle": "You see a post because you follow that account. Your follow list is read in your browser, and the feed is the outboxes of those you follow who are on a BookWyrm instance. Nothing more.",
     "noCrawlerHeading": "No crawler",
-    "noCrawler": "Lesesalen does not walk the fediverse collecting BookWyrm posts into a database. Those posts are public, but public is not the same as consenting to be aggregated and re-served by a third party the author never heard of.",
+    "noCrawler": "Lesesalen does not walk the fediverse collecting BookWyrm posts into a database. The server never fetches anything on its own initiative: every single request happens because a reader is present and follows that account. The posts are public, but public is not the same as consenting to be aggregated and re-served by a third party the author never heard of.",
     "sampleHeading": "What the five cards look like",
     "sampleNote": "The examples below are invented. A stranger arriving here never sees other people's reading.",
     "cta": "Log in with your own instance"
   },
   "feed": {
-    "loading": "Loading your timeline…",
-    "searchingBack": "Searching further back…",
-    "searchingBackDetail": "A home timeline is mostly not books, so the first screen can be thin.",
-    "loadMore": "Load more",
+    "loading": "Loading…",
     "empty": "No book posts yet.",
-    "emptyDetail": "Either nobody you follow has posted to BookWyrm recently, or we need to look further back.",
-    "gather": "Gather from the BookWyrm accounts I follow",
-    "gatherHelp": "Fetches posts straight from each BookWyrm account you follow instead of waiting for them to appear in the timeline. The requests go from your browser to your own instance.",
-    "gathering": "Gathering from {count} accounts…",
-    "end": "Nothing more to fetch.",
+    "emptyDetail": "None of the BookWyrm accounts you follow has posted anything we could read.",
     "error": "Something went wrong while fetching.",
     "retry": "Try again",
     "sessionExpired": "Your instance no longer accepts the token. Please log in again."
+  },
+  "samling": {
+    "reading": "Reading your follow list…",
+    "probing": "Checking which instances run BookWyrm…",
+    "sweeping": "Fetching the shelf of {done} of {total} accounts…",
+    "sweepingDetail": "One request per account yields fifteen posts. The first time takes a while, because every book has to be looked up; after that the collection lives in your browser.",
+    "deepening": "Reaching further back — {done} of {total} pages…",
+    "deepen": "Reach further back",
+    "deepenHelp": "Goes deeper into the outboxes of the people you follow, one round each in turn, so a single very active shelf cannot take all the room.",
+    "end": "The whole shelf is in, from all {count} accounts.",
+    "noShelves": "No BookWyrm accounts in your follow list.",
+    "noShelvesDetail": "Lesesalen builds the feed from the outboxes of the BookWyrm accounts you follow. Follow somebody on a BookWyrm instance and they will appear here."
   },
   "kind": {
     "omtale": "Review",
@@ -118,7 +123,8 @@
     "unboost": "Remove boost",
     "replyTo": "Reply",
     "byPerson": "See this person's book posts",
-    "byBook": "Filter on this book"
+    "byBook": "Filter on this book",
+    "notOnYourInstance": "Your instance does not have this post"
   },
   "author": {
     "heading": "Book posts from {name}",
@@ -138,44 +144,58 @@
     "ephemeralHelp": "For shared machines. The token then lives in sessionStorage and disappears when the tab closes.",
     "logOut": "Log out",
     "loggingOut": "Logging out…",
-    "logOutHelp": "The token is revoked at your instance first, then cleared from the browser."
+    "logOutHelp": "The token is revoked at your instance first, then cleared from the browser.",
+    "collection": "The collection",
+    "collectionHelp": "The posts we have fetched live in your browser, so we do not have to fetch everything again each time. None of it is on our server.",
+    "clearCollection": "Clear the collection",
+    "clearingCollection": "Clearing…",
+    "collectionCleared": "The collection is cleared. It rebuilds the next time you open the feed."
   },
   "about": {
     "title": "About Lesesalen",
     "sections": [
       {
-        "heading": "What it is",
+        "heading": "What this is",
         "paragraphs": [
-          "Lesesalen is a Mastodon client that shows you the book posts and nothing else. Five kinds of book post, five distinct looks, laid out as a reading room rather than a microblogging timeline.",
-          "BookWyrm has no public API, but it federates. Every BookWyrm post reaches your Mastodon home timeline as a plain note. The trouble is that Mastodon discards the rich fields: the rating, the review title, the quoted passage, how far into the book the reader is, and the link to the book are all custom ActivityPub properties Mastodon has no column for."
+          "Lesesalen is a Mastodon client that shows you the book posts and nothing else. Five kinds of book post, five distinct looks — laid out as a reading room instead of a microblogging timeline.",
+          "BookWyrm has no public API, but it federates. The problem is that Mastodon discards the rich fields: the rating, the review title, the quoted passage, how far into the book the reader is, and the link to the book are all custom ActivityPub properties Mastodon has no column for."
         ]
       },
       {
-        "heading": "Why a server exists",
+        "heading": "Where the posts come from",
         "paragraphs": [
-          "The origin object is still public and addressable. Fetch it with Accept: application/activity+json and you get the whole thing back — type, rating, title, quote, position and the link to the edition.",
-          "The browser cannot do this itself, because BookWyrm instances do not send CORS headers for ActivityPub fetches. That single fact is the entire reason a server exists in this project. It does three things: it looks up what software an instance runs, it re-fetches the origin object, and it caches bibliographic data and cover images."
+          "The feed is the outboxes of the BookWyrm accounts you follow, not your home timeline. Your follow list is read in your browser with your own token; of those accounts we keep the ones on a BookWyrm instance and read their outbox page by page.",
+          "The reason is that one outbox page yields fifteen already-complete objects for one request, where the timeline needed one fetch per post. The same work for a fifteenth of the traffic at the instance we are a guest of — and the whole of an account’s reading history, not just what your instance happened to receive.",
+          "What is lost is boosts and followers-only posts. A book post boosted by somebody you follow is in nobody’s followed outbox, and a public outbox contains only public posts."
         ]
       },
       {
-        "heading": "What it deliberately is not",
+        "heading": "Why there is a server",
         "paragraphs": [
-          "You see a post because you follow that account, or because someone you follow boosted it. Same as Mastodon. Nothing more.",
-          "So there is no crawler. Lesesalen does not walk the fediverse collecting BookWyrm posts into a database. Those posts are public, but public is not the same as consenting to be aggregated, indexed and re-served by a third party the author never heard of. A BookWyrm user posting a review to their followers did not sign up to be in somebody's corpus.",
-          "For the same reason there is no logged-out feed and no discovery surface. A stranger arriving here sees an explainer and some invented samples, not other people's reading.",
-          "The one exception is clicking an author and seeing their posts. That is an ordinary client affordance: it goes through your own instance with your own token, and it shows exactly what Mastodon would show you."
+          "The origin object is public and addressable. Fetch it with Accept: application/activity+json and you get the whole object back — type, rating, title, quote, position and a link to the edition.",
+          "The browser cannot do this itself, because BookWyrm instances send no CORS headers for ActivityPub fetches. That single fact is the entire reason there is a server in this project. It does four things: looks up what software an instance runs, reads a page of the outbox of an account you follow, re-fetches a single origin object, and caches bibliographic data and covers."
+        ]
+      },
+      {
+        "heading": "What this deliberately is not",
+        "paragraphs": [
+          "You see a post because you follow that account. Same as Mastodon, minus boosts. Nothing more.",
+          "So there is no crawler. Lesesalen does not walk the fediverse collecting BookWyrm posts into a database, and there is no background job: the server only fetches while a reader is present. The posts are public, but public is not the same as consenting to be aggregated, indexed and re-served by a third party the author never heard of. A BookWyrm user posting a review to their followers did not sign up to be in somebody’s corpus.",
+          "For the same reason there is no logged-out timeline and no discovery surface. A stranger arriving here sees an explainer and some invented samples — not what other people are reading.",
+          "The posts we have fetched for you are stored in your browser, so we do not have to fetch everything again each time you come back. They never sit on our server, and if you have ticked the box to be logged out when the tab closes, they are not stored at all."
         ]
       },
       {
         "heading": "Replies",
         "paragraphs": [
-          "You can reply, favourite and boost through the Mastodon API. A reply becomes an ordinary Mastodon post — not a BookWyrm comment. Mastodon cannot mint BookWyrm objects, and we would rather say so once too often than once too rarely."
+          "You can reply, favourite and boost through the Mastodon API. A post fetched from an outbox has no Mastodon id, so one is looked up at your instance the first time you act on the card. If your instance does not have the post and cannot fetch it, we say so rather than letting the action fail.",
+          "A reply becomes an ordinary Mastodon post — not a BookWyrm comment. Mastodon cannot mint BookWyrm objects, and we would rather say that once too often than once too seldom."
         ]
       },
       {
         "heading": "Contact",
         "paragraphs": [
-          "Lesesalen fetches from instances we do not own, and tries to be a polite guest: one request per second per domain, an honest User-Agent, and we honour 429 and Retry-After. If it is nonetheless a nuisance, get in touch and we will fix it."
+          "Lesesalen fetches from instances we do not own, and tries to be a polite guest: one request per second per domain, an honest User-Agent, and we respect 429 and Retry-After. Reading the outbox instead of every post separately is part of the same thing — it is fifteen times fewer requests. If something is still a nuisance, get in touch and we will fix it."
         ]
       }
     ]
@@ -184,22 +204,38 @@
     "title": "Privacy",
     "lead": "Short, and true.",
     "points": [
-      { "term": "No accounts", "detail": "The server has no user table. There is no login on the server side at all." },
-      { "term": "No tokens", "detail": "Your credentials stay in your browser and go only to your own instance." },
-      { "term": "No follow lists", "detail": "Your social graph is never transmitted to the server. Only bare domain names are, in batches, to answer the question \"is this instance BookWyrm\"." },
-      { "term": "No reading history", "detail": "Post content passes through memory and is discarded. A restart empties everything, which is correct." },
-      { "term": "No analytics, no cookies, no third-party anything", "detail": "No tracking, no CDN, no external scripts or fonts." }
+      {
+        "term": "No user accounts",
+        "detail": "The server has no user table. There is no login on the server side at all."
+      },
+      {
+        "term": "No token",
+        "detail": "Your login stays in the browser and goes only to your own instance."
+      },
+      {
+        "term": "Your follow list is read in the browser",
+        "detail": "It is never sent as a list. But the feed is the outboxes of the BookWyrm accounts you follow, and to fetch an outbox the server has to be told which account it belongs to. So it does see the addresses of those accounts — one at a time, never how many others you follow, and never the ones that are not on BookWyrm. See the caveat below."
+      },
+      {
+        "term": "No reading history on the server",
+        "detail": "Post content passes through memory and is discarded. A restart empties everything, and that is how it should be. What we have fetched for you is stored in your own browser instead — and not even there, if you have ticked the box to be logged out when the tab closes."
+      },
+      {
+        "term": "No analytics, no cookies, no third parties",
+        "detail": "No tracking, no CDN, no external scripts or fonts."
+      }
     ],
     "keptHeading": "What is actually kept",
     "kept": [
       "Which fediverse instances run BookWyrm. That is infrastructure, not personal information, and one lookup serves everybody.",
       "Bibliographic data and cover images for books that have been seen: title, authors, page count, ISBN and the link to BookWyrm. A book edition is not anyone's personal information.",
-      "Covers are downloaded once, when a book is first cached, and then served from here. So your IP never reaches the instance that owns the image, and because the fetch happens at cache time rather than per view, the server learns nothing about who looked at what."
+      "Covers are downloaded once, when a book is first cached, and then served from here. So your IP never reaches the instance that owns the image, and because the fetch happens at cache time rather than per view, the server learns nothing about who looked at what.",
+      "The posts we have fetched for you, in your own browser. Not on our server, and not at all if you have ticked the box to be logged out when the tab closes."
     ],
-    "caveatHeading": "The one honest caveat",
-    "caveat": "The endpoint that fetches origin objects receives the URIs of the posts being viewed. So the server transiently sees which posts someone is reading. They are not logged, not stored and not associated with any identity, and the cache is shared so requests are not attributable to a person. But it is not nothing, and it belongs here rather than glossed over.",
+    "caveatHeading": "The honest caveats",
+    "caveat": "The endpoints that fetch from BookWyrm accept two kinds of address: the URI of a post to be shown, and the URI of an account you follow, when its outbox is to be read. So the server does see which posts somebody is reading, and who they follow on BookWyrm. The second is new, and is the price of building the feed from outboxes instead of the timeline; the first was always so, because a post URI contains the account name. Neither is logged, stored, or tied to any identity, and the answers go out no-store. But it is not nothing, and it belongs here rather than being smoothed away.",
     "rightsHeading": "Access and deletion",
-    "rights": "There is no export feature and no delete feature, because there is nothing to export and nothing to delete. To remove your login, log out: the token is revoked at your instance first, then cleared from the browser.",
+    "rights": "There is no export on the server side, because there is nothing there to export. The collection in your browser you can clear at any time under Settings. To remove your login, log out: the token is revoked at your instance first, then cleared from the browser, and the collection goes with it.",
     "updated": "Last changed {date}."
   },
   "error": {
