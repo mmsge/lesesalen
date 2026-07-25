@@ -73,6 +73,9 @@ MAX_REDIRECTS = _env_int("LESESALEN_MAX_REDIRECTS", 3)
 # Request-shape caps, so one caller can't turn a batch endpoint into a fan-out.
 MAX_DOMAINS_PER_REQUEST = _env_int("LESESALEN_MAX_DOMAINS_PER_REQUEST", 100)
 MAX_URIS_PER_REQUEST = _env_int("LESESALEN_MAX_URIS_PER_REQUEST", 40)
+# Book ids the client may ask about in one go. Purely local SQLite reads, so this
+# is generous — a screenful of cards catching up on their editions.
+MAX_BOOK_IDS_PER_REQUEST = _env_int("LESESALEN_MAX_BOOK_IDS_PER_REQUEST", 200)
 # How many origin fetches one /api/berik call may trigger. Cache hits are free.
 ENRICH_CONCURRENCY = _env_int("LESESALEN_ENRICH_CONCURRENCY", 4)
 
@@ -83,6 +86,16 @@ MAX_OUTBOX_PAGE = _env_int("LESESALEN_MAX_OUTBOX_PAGE", 400)
 # BookWyrm serves 15 per page. The cap is for a hostile or broken origin that
 # answers with thousands, each of which would cost a book lookup.
 MAX_OUTBOX_ITEMS = _env_int("LESESALEN_MAX_OUTBOX_ITEMS", 60)
+
+# Outbox pages, shared between readers for a few minutes so a popular account is
+# not fetched once per reader. Short, because a shelf gains posts and the feed
+# should notice; memory only, like every other post-shaped cache here.
+PAGE_CACHE_SIZE = _env_int("LESESALEN_PAGE_CACHE_SIZE", 400)
+PAGE_CACHE_TTL = _env_int("LESESALEN_PAGE_CACHE_TTL", 600)
+
+# Editions are resolved *after* the page they belong to has been served, so the
+# reader never waits on a cover re-encode. This bounds that tail.
+EDITION_CONCURRENCY = _env_int("LESESALEN_EDITION_CONCURRENCY", 3)
 
 # Covers are re-encoded on ingest (§9.4) — never stored or served as uploaded.
 COVER_MAX_EDGE = _env_int("LESESALEN_COVER_MAX_EDGE", 800)

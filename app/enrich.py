@@ -26,6 +26,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+from datetime import datetime
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -113,6 +114,60 @@ _PURE_REVIEW_NAME = re.compile(
 
 _TAG_BOOK_TYPES = {"edition", "book", "work"}
 
+# BookWyrm names the cover attachment after the edition it belongs to:
+#
+#   "Matt Dinniman: This Inevitable Ruin (Hardcover, 2026, Michael Joseph Ltd)"
+#
+# Author, title, format and year, already in the object we are holding. 98% of
+# outbox items carry one, which is what lets a card render complete before any
+# edition has been fetched — the expensive part of enrichment by a wide margin.
+# The shape is BookWyrm's own `Edition.__str__`, and the parse mirrors the one in
+# `mmsge/bokhylla` (`lib/parse.js`, `parseEditionName`) so the two agree.
+_EDITION_FORMATS = {
+    "hardcover", "paperback", "ebook", "audiobook", "audiobookformat",
+    "graphicnovel", "audio",
+}
+_YEAR = re.compile(r"^(1[0-9]{3}|20[0-9]{2})$")
+
+
+def _edition_from_name(name: Any) -> dict[str, Any] | None:
+    """Author, title, format and year, read off a cover attachment's name."""
+    if not isinstance(name, str):
+        return None
+    text = sanitise.clean_text(name, limit=400)
+    if not text:
+        return None
+
+    authors, _, rest = text.partition(":")
+    if not rest.strip():
+        authors, rest = "", text  # no author segment: the whole string is the title
+    title = rest.strip()
+
+    book_format: str | None = None
+    year: int | None = None
+    # The trailing parenthesis, when there is one, holds format / year / publisher.
+    if title.endswith(")") and "(" in title:
+        head, _, tail = title.rpartition("(")
+        inner = tail[:-1]
+        if head.strip():
+            title = head.strip()
+            for part in (piece.strip() for piece in inner.split(",")):
+                lowered = part.lower()
+                if lowered in _EDITION_FORMATS:
+                    book_format = part
+                elif _YEAR.match(part):
+                    year = int(part)
+
+    if not title:
+        return None
+    people = [who.strip() for who in authors.split(",") if who.strip()] if authors else []
+    return {
+        "tittel": title[:300],
+        "forfattarar": people[:8],
+        "format": book_format,
+        "aar": year,
+    }
+
 # Any link to an edition on the same host, for objects that carry neither
 # `inReplyToBook` nor an Edition tag.
 _BOOK_HREF = re.compile(r'href="(https://[^"]+/book/\d+)"')
@@ -157,6 +212,25 @@ def _position(value: Any) -> int | None:
     else:
         return None
     return number if 0 <= number <= 100_000 else None
+
+
+def _published(value: Any) -> str | None:
+    """An ISO 8601 timestamp, validated rather than trusted.
+
+    The client sorts and formats on this, and `Date.parse` of a bad string is
+    silently NaN — which renders as 1970 and destroys the ordering. Better to
+    return None and let the card say nothing than to pass rubbish through.
+    """
+    if not isinstance(value, str):
+        return None
+    text = value.strip()[:40]
+    if not text:
+        return None
+    try:
+        datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return text
 
 
 def _position_mode(value: Any) -> str:
@@ -234,6 +308,19 @@ def parse_object(document: dict[str, Any], host: str, uri: str = "") -> dict[str
     quote_html = sanitise.clean_html(document.get("quote"))
     title = sanitise.clean_text(document.get("name"), limit=300)
     book_url = _book_url(document, host)
+    attachments = document.get("attachment")
+    if isinstance(attachments, dict):
+        attachments = [attachments]
+    inline_book = next(
+        (
+            found
+            for item in (attachments or [])
+            if isinstance(item, dict)
+            for found in [_edition_from_name(item.get("name"))]
+            if found
+        ),
+        None,
+    )
 
     if kind is None:
         # A plain Note that replies to a book is a comment in all but name.
@@ -276,8 +363,16 @@ def parse_object(document: dict[str, Any], host: str, uri: str = "") -> dict[str
         "status": None,
         "sensitiv": bool(document.get("sensitive")),
         "aatvaring": sanitise.clean_text(document.get("summary"), limit=300) or None,
+        # The origin's own publication time. The timeline feed took this off the
+        # Mastodon status and never needed it here; the outbox feed has nothing
+        # else, and without it every card dates from the epoch and the sort order
+        # is meaningless.
+        "publisert": _published(document.get("published")),
         "bok_url": book_url,
         "bok": None,
+        # What the cover attachment's name already told us. Enough to render a
+        # complete card before any edition has been fetched.
+        "bok_kladd": inline_book,
         "kjelde": identifier or uri or None,
     }
     if kind == KIND_READING_STATUS:
@@ -354,6 +449,18 @@ async def enrich(uris: list[str]) -> tuple[dict[str, Any], dict[str, Any]]:
             enrichment = None if isinstance(outcome, BaseException) else outcome
             remember(uri, enrichment)
             results[uri] = enrichment
+
+    # The outbox path stores its own bookkeeping on cached entries (`_bok_url`,
+    # so a page can resolve editions after it has been served). Those keys are
+    # internal and must not ride out on a response.
+    results = {
+        uri: (
+            {key: value for key, value in enrichment.items() if not key.startswith("_")}
+            if isinstance(enrichment, dict)
+            else enrichment
+        )
+        for uri, enrichment in results.items()
+    }
 
     book_ids = {value["bok"] for value in results.values() if value and value.get("bok")}
     book_records: dict[str, Any] = {}

@@ -59,6 +59,20 @@ export async function collection(actorUri, page = 1) {
   };
 }
 
+/**
+ * The editions we have, out of the ids asked for. Absent means "not yet".
+ *
+ * `/api/samling` answers before it has fetched the editions a page mentions, so
+ * the client comes back for them. One request for a whole screen, and a missing
+ * one is simply omitted rather than being a 404 per card.
+ */
+export async function books(ids) {
+  const list = [...new Set(ids.filter(Boolean))];
+  if (!list.length) return {};
+  const data = await post('/api/boker', { ider: list });
+  return data.boker || {};
+}
+
 export async function book(id) {
   const response = await fetch(`/api/bok/${encodeURIComponent(id)}`);
   if (!response.ok) return null;

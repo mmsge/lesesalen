@@ -24,7 +24,12 @@
 import { isEphemeral } from './storage.js';
 
 const NAME = 'lesesalen';
-const VERSION = 1;
+// 2: posts stored by v1 have no `publisert` — the server was not returning the
+// origin's publication time, so every card dated from the epoch and the sort was
+// meaningless. Those rows cannot be repaired locally, so the upgrade drops them
+// and the next sweep refetches. Bump this again for any change that invalidates
+// stored rows rather than trying to migrate them: a re-sweep is cheap now.
+const VERSION = 2;
 
 export const POSTS = 'postar';
 export const ACTORS = 'aktorar';
@@ -63,8 +68,13 @@ export function open() {
       resolve(null);
       return;
     }
-    request.onupgradeneeded = () => {
+    request.onupgradeneeded = (event) => {
       const database = request.result;
+      // Rows from before this version are not worth migrating — drop and re-sweep.
+      if (event.oldVersion > 0 && database.objectStoreNames.contains(POSTS)) {
+        database.deleteObjectStore(POSTS);
+        if (database.objectStoreNames.contains(ACTORS)) database.deleteObjectStore(ACTORS);
+      }
       if (!database.objectStoreNames.contains(POSTS)) {
         const posts = database.createObjectStore(POSTS, { keyPath: 'uri' });
         // Sorting and eviction both work on publication date.

@@ -61,6 +61,26 @@ _actors: TTLCache[Shelf] = TTLCache(
     max_size=config.ACTOR_CACHE_SIZE, ttl=config.ACTOR_CACHE_TTL
 )
 
+# "<actor>#<page>" -> the raw orderedItems of that page.
+#
+# Two readers who both follow the same popular BookWyrm account should not each
+# make that instance serve the same page. Short-lived, size-capped, memory only —
+# the same volatility as the enrichment cache, and for the same reason: the keys
+# name actors somebody follows (ADR 0005, ADR 0010).
+_pages: TTLCache[list[Any]] = TTLCache(
+    max_size=config.PAGE_CACHE_SIZE, ttl=config.PAGE_CACHE_TTL
+)
+
+# Edition resolution outlives the response that started it, so the tasks need a
+# reference of their own or the event loop may collect them mid-flight.
+_running: set[asyncio.Task] = set()
+
+
+def _spawn(coroutine) -> None:
+    task = asyncio.create_task(coroutine)
+    _running.add(task)
+    task.add_done_callback(_running.discard)
+
 
 class OutboxError(Exception):
     """The actor or its outbox could not be used. Carries a client-safe reason."""
@@ -155,7 +175,17 @@ def _page_url(outbox: str, page: int) -> str:
 
 
 async def _items_of(outbox: str, host: str, page: int) -> list[Any]:
-    """One outbox page's items."""
+    """One outbox page's items, shared briefly between readers."""
+    key = f"{outbox}#{page}"
+    cached = _pages.get(key)
+    if cached is not None:
+        return cached
+    items = await _fetch_items(outbox, host, page)
+    _pages.put(key, items)
+    return items
+
+
+async def _fetch_items(outbox: str, host: str, page: int) -> list[Any]:
     try:
         document = await _fetch_json(_page_url(outbox, page), host)
     except netfetch.StatusError as exc:
@@ -174,8 +204,16 @@ async def _items_of(outbox: str, host: str, page: int) -> list[Any]:
     return items[: config.MAX_OUTBOX_ITEMS]
 
 
-async def _parse_item(item: Any, host: str) -> dict[str, Any] | None:
-    """Parse one outbox entry, resolving its book the way `/api/berik` does."""
+def _parse_item(item: Any, host: str) -> tuple[dict[str, Any], str | None] | None:
+    """Parse one outbox entry. Returns (enrichment, edition URL to resolve later).
+
+    Deliberately synchronous and fetch-free. The old version awaited
+    `books.ensure_book` per item, which meant a page of fifteen posts mentioning
+    eight unseen editions blocked for ~23 s behind edition fetches, author
+    fetches, cover downloads and re-encodes — while the outbox page itself had
+    already told us the author and title (`enrich.parse_object`, `bok_kladd`).
+    So the card is assembled now and the edition is resolved after the response.
+    """
     if not isinstance(item, dict):
         return None
     uri = item.get("id")
@@ -184,7 +222,9 @@ async def _parse_item(item: Any, host: str) -> dict[str, Any] | None:
 
     cached = enrich.cached(uri)
     if cached is not None:
-        return None if cached is enrich.NOT_A_BOOK_POST else cached
+        if cached is enrich.NOT_A_BOOK_POST:
+            return None
+        return cached, cached.get("_bok_url")
 
     enrichment = enrich.parse_object(item, host, uri)
     if enrichment is None:
@@ -193,13 +233,32 @@ async def _parse_item(item: Any, host: str) -> dict[str, Any] | None:
 
     book_url = enrichment.pop("bok_url", None)
     if book_url:
-        record = await books.ensure_book(book_url)
-        if record:
-            enrichment["bok"] = record["id"]
-    # Warm the shared cache, so a post that later arrives by any other route is
-    # already parsed. Memory only, same TTL, same volatility (ADR 0005).
+        # The id is a hash of the URL, so it is knowable without fetching
+        # anything. The client can therefore ask `/api/bok/<id>` for the full
+        # record once it exists, and render `bok_kladd` until then.
+        enrichment["bok"] = books.book_id(book_url)
+        enrichment["_bok_url"] = book_url  # internal; stripped before the response
     enrich.remember(uri, enrichment)
-    return enrichment
+    return enrichment, book_url
+
+
+async def _resolve_editions(urls: list[str]) -> None:
+    """Fetch the editions a page mentioned, after that page has been served.
+
+    Reader-initiated and bounded: this is not a background job that runs without
+    anybody present (ADR 0008), it is the tail of a request that has already
+    answered. Failures are swallowed — the card still has author and title.
+    """
+    semaphore = asyncio.Semaphore(config.EDITION_CONCURRENCY)
+
+    async def one(url: str) -> None:
+        async with semaphore:
+            try:
+                await books.ensure_book(url)
+            except Exception:
+                pass
+
+    await asyncio.gather(*(one(url) for url in urls), return_exceptions=True)
 
 
 async def collect(actor_uri: str, page: int) -> dict[str, Any]:
@@ -219,23 +278,35 @@ async def collect(actor_uri: str, page: int) -> dict[str, Any]:
     shelf = await _resolve_shelf(actor_uri, host)
     items = await _items_of(shelf.outbox, host, page)
 
-    parsed = await asyncio.gather(
-        *(_parse_item(item, host) for item in items), return_exceptions=True
-    )
-    entries = [
-        result
-        for result in parsed
-        if result is not None and not isinstance(result, BaseException)
-    ]
+    entries: list[dict[str, Any]] = []
+    pending: list[str] = []
+    for item in items:
+        parsed = _parse_item(item, host)
+        if parsed is None:
+            continue
+        enrichment, book_url = parsed
+        entries.append(enrichment)
+        if book_url and db.get_book(books.book_id(book_url)) is None:
+            pending.append(book_url)
 
+    # Editions already on disk go out with the page; the rest are fetched behind
+    # it, so the reader is not kept waiting for a cover re-encode.
     book_records: dict[str, Any] = {}
     for identifier in {entry["bok"] for entry in entries if entry.get("bok")}:
         record = db.get_book(identifier)
         if record:
             book_records[identifier] = books.public_book(record)
 
+    if pending:
+        _spawn(_resolve_editions(list(dict.fromkeys(pending))))
+
     return {
-        "innslag": entries,
+        # `_bok_url` is ours, not the client's business, and it is the one field
+        # here that names a URL we fetch.
+        "innslag": [
+            {key: value for key, value in entry.items() if not key.startswith("_")}
+            for entry in entries
+        ],
         "boker": book_records,
         # A page with few cards on it is not the end — most of an outbox page can
         # be activity that is not a book post. Only running out of pages is.

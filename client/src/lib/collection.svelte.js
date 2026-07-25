@@ -36,7 +36,8 @@ export const feed = $state({
   /** 'kvile' | 'fylgje' | 'instansar' | 'breidde' | 'djupn' */
   phase: 'kvile',
   shelves: 0, // BookWyrm accounts found
-  swept: 0, // ...and how many have had their first page read
+  sweeping: 0, // ...how many need their first page read this round
+  swept: 0, // ...and how many of those are done
   exhausted: false,
   error: null,
   expired: false,
@@ -51,6 +52,31 @@ let followsRead = false;
 
 function sortByDate() {
   feed.items.sort((a, b) => Date.parse(b.core.created_at) - Date.parse(a.core.created_at));
+}
+
+/**
+ * The book, as far as we know it right now.
+ *
+ * A cover attachment's name already gave us author and title (`bok_kladd`), so a
+ * card can be complete before its edition has been fetched — which is the whole
+ * reason the feed no longer waits ~23 s for a page of unseen books. `omslag` and
+ * `blurhash` are absent until the real record lands, so `Cover.svelte` shows its
+ * placeholder and then fills in. Text first, cover follows.
+ */
+function bookOf(entry) {
+  const real = entry.bok ? feed.books[entry.bok] : null;
+  if (real) return real;
+  if (!entry.bok_kladd) return null;
+  return {
+    id: entry.bok || null,
+    tittel: entry.bok_kladd.tittel,
+    forfattarar: entry.bok_kladd.forfattarar || [],
+    format: entry.bok_kladd.format || null,
+    aar: entry.bok_kladd.aar || null,
+    omslag: null,
+    blurhash: null,
+    utkast: true, // the edition has not been fetched yet
+  };
 }
 
 /**
@@ -79,7 +105,7 @@ function itemOf(entry, account) {
     // Nothing in an outbox is a boost: it is the account's own output.
     boostedBy: null,
     enrichment: entry,
-    book: entry.bok ? feed.books[entry.bok] || null : null,
+    book: bookOf(entry),
     resolved: false,
   };
 }
@@ -198,6 +224,51 @@ async function readPage(actor, shelf) {
  * posts stay in the collection until they are evicted, but it is not walked
  * further: you see a post because you follow that account (ADR 0008).
  */
+/**
+ * Swap draft books for real editions once the server has fetched them.
+ *
+ * `/api/samling` returns immediately with whatever editions were already on
+ * disk and resolves the rest behind the response, so the ones it did not have
+ * appear a few seconds later. `/api/bok/<id>` 404s until then, which is why this
+ * makes a few spaced attempts and then stops caring: a card with author and
+ * title but no cover is a perfectly readable card, and the next visit will have
+ * it from disk anyway.
+ */
+const BOOK_RETRIES = [1500, 4000, 10000];
+
+function missingBooks() {
+  const wanted = new Set();
+  for (const item of feed.items) {
+    const id = item.enrichment.bok;
+    if (id && !feed.books[id]) wanted.add(id);
+  }
+  return [...wanted];
+}
+
+async function catchUpBooks(attempt = 0) {
+  const wanted = missingBooks();
+  if (!wanted.length || attempt >= BOOK_RETRIES.length) return;
+  await new Promise((resolve) => setTimeout(resolve, BOOK_RETRIES[attempt]));
+
+  let found = {};
+  try {
+    found = await server.books(wanted);
+  } catch {
+    /* still resolving, or never will: the draft cards stand */
+  }
+  if (Object.keys(found).length) {
+    Object.assign(feed.books, found);
+    // `feed.items` is deeply reactive, so reassigning the book re-renders the
+    // card with its cover.
+    for (const item of feed.items) {
+      const id = item.enrichment.bok;
+      if (id && found[id]) item.book = found[id];
+    }
+    kista.putBooks(found);
+  }
+  if (missingBooks().length) await catchUpBooks(attempt + 1);
+}
+
 function unfinished() {
   return [...shelves.entries()].filter(([, shelf]) => !shelf.done && shelf.account);
 }
@@ -247,14 +318,37 @@ export async function load(account) {
       }
 
       // Breadth first: one page from every shelf that has not been read yet.
+      //
+      // Run the hosts in parallel. The server paces each origin domain at one
+      // request per second, and that is the politeness guarantee — but shelves on
+      // *different* instances never contend for it, so waiting for one before
+      // starting the next just wastes wall-clock. Within a host it stays strictly
+      // sequential, which is what the throttle would enforce anyway.
       feed.phase = 'breidde';
       feed.swept = 0;
+      const byHost = new Map();
+      let queued = 0;
       for (const [actor, shelf] of shelves) {
-        if (shelf.page === 0 && shelf.account) await readPage(actor, shelf);
-        feed.swept += 1;
-        sortByDate();
+        if (shelf.page !== 0 || !shelf.account) continue;
+        const host = mastodon.accountDomain(shelf.account) || actor;
+        if (!byHost.has(host)) byHost.set(host, []);
+        byHost.get(host).push([actor, shelf]);
+        queued += 1;
       }
+      // On a restored visit most shelves already have a page, so count what this
+      // round will actually fetch rather than the whole follow list.
+      feed.sweeping = queued;
+      await Promise.all(
+        [...byHost.values()].map(async (queue) => {
+          for (const [actor, shelf] of queue) {
+            await readPage(actor, shelf);
+            feed.swept += 1;
+            sortByDate();
+          }
+        }),
+      );
       kista.prune();
+      catchUpBooks();
       if (unfinished().length) return;
     }
 
@@ -271,6 +365,7 @@ export async function load(account) {
     }
     sortByDate();
     kista.prune();
+    catchUpBooks();
   } catch (error) {
     if (String(error.message) === 'unauthorised') feed.expired = true;
     else feed.error = 'feed.error';
@@ -299,6 +394,7 @@ export function reset() {
   feed.expired = false;
   feed.restored = false;
   feed.shelves = 0;
+  feed.sweeping = 0;
   feed.swept = 0;
   feed.phase = 'kvile';
   shelves.clear();

@@ -55,3 +55,5 @@ decision or an agent made it without input**:
 | [0007](0007-the-uri-is-the-type-discriminator.md) | BookWyrm serves third parties a plain `Note`; the URI is the type | Accepted |
 | [0008](0008-the-feed-is-the-followed-outboxes.md) | The feed is the outboxes of the accounts you follow, not your home timeline | Accepted |
 | [0009](0009-the-collection-lives-in-the-readers-browser.md) | The collection persists in the reader's own browser, never on the server | Accepted |
+| [0010](0010-cards-render-before-their-editions-are-fetched.md) | A card renders before its edition is fetched, from the cover attachment's name | Accepted |
+| [0011](0011-outbox-pages-are-shared-between-readers.md) | Outbox pages are cached in memory and shared between readers | Accepted |
