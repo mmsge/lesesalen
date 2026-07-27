@@ -12,5 +12,14 @@ Allow: /om
 Allow: /personvern
 Disallow: /api/
 Disallow: /omslag/
+# A person page is public — it needs no login, so a shared link works for
+# whoever it was shared with. That is not the same as consenting to be indexed:
+# a BookWyrm user posting a review to their followers did not sign up to be in
+# a search corpus, and the same reasoning that rules out a crawler here rules
+# out being crawled. Post and book pages likewise: both are somebody's reading.
+Disallow: /@
+Disallow: /innlegg/
+Disallow: /bok/
+Disallow: /logg-inn
 
 Sitemap: https://lesesalen.msge.no/sitemap.xml

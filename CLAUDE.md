@@ -55,6 +55,17 @@ an ADR; read it before working around it.
 - **`publisert` is the client's only date.** `parse_object` must keep returning
   the origin's `published`, or every card dates from 1970 *and* the feed sorts on
   `NaN` — which looks plausible and is not (ADR 0010).
+- **A page number needs `positionMode: PG`.** `_position_mode` returns `None`
+  when the object did not say, and `client/src/lib/progress.js` is the only
+  place that decides whether a post has progress. Giving `_position_mode` a
+  default puts invented page numbers on screen with nothing visibly broken
+  (ADR 0012).
+- **Nobody ever gave up on a book.** BookWyrm has no "stopped reading" event, so
+  no surface states one. Inactivity is derived in the browser, labelled "Rekna ut
+  av Lesesalen", and never carries a page number (ADR 0013).
+- **A book looks the same everywhere.** Cloth, spine width and spine height are
+  pure functions of the BookWyrm work id (`client/src/lib/spine.js`) — never of
+  load order, an index, or `Math.random` (ADR 0014).
 - **The client is built in CI and committed to `client/dist`.** The box never
   runs Node. Edit `client/src`, run `make client`, commit the result (ADR 0001).
 
@@ -72,8 +83,17 @@ app/            FastAPI server — the only reason it exists is that BookWyrm
   sanitise.py   nh3, server side
   shell.py      index.html + per-route metadata + git-derived page dates
 client/src/     Svelte 5 (runes). Built by CI, output committed to client/dist
+  app.css       tokens, the shelf rail, and the one prefers-reduced-motion guard
+  lib/progress.js  the only place that decides a post has a page position
+  lib/stale.js     inactivity, derived and labelled as derived
+  lib/spine.js     deterministic cloth and silhouette for a book without a cover
+  lib/router.svelte.js  routes, filter history entries, scroll restoration
 tests/          pytest; the security guards are pinned here on purpose
 ```
+
+The client is **mobile-first** — every screen is drawn at 393px and grows into
+the existing single 44rem column. Bottom tab bar under 44rem, back in the header
+above it; sheets become panels; the review cover grows 132 → 168px.
 
 ## Common operations
 

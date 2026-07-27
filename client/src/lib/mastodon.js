@@ -11,13 +11,38 @@ function authHeaders(account) {
   return { Authorization: `Bearer ${account.token}` };
 }
 
+/**
+ * Errors carry the status code, because the UI says different things about
+ * different ones and must never say any of them out loud (§Errors, 5h): 401 is
+ * "you can keep reading what is already here", 403 is "your instance does not
+ * allow this", 404 is "the post is gone". A message that mentions a number is
+ * a message the reader cannot act on.
+ */
+export class InstanceError extends Error {
+  constructor(status, message) {
+    super(message || `http ${status}`);
+    this.name = 'InstanceError';
+    this.status = status;
+  }
+}
+
 async function call(account, path, options = {}) {
-  const response = await fetch(`https://${account.domain}${path}`, {
-    ...options,
-    headers: { ...authHeaders(account), ...(options.headers || {}) },
-  });
-  if (response.status === 401) throw new Error('unauthorised');
-  if (!response.ok) throw new Error(`http ${response.status}`);
+  let response;
+  try {
+    response = await fetch(`https://${account.domain}${path}`, {
+      ...options,
+      headers: { ...authHeaders(account), ...(options.headers || {}) },
+    });
+  } catch (cause) {
+    // No response at all: offline, DNS, a dead instance. 0 is not a status the
+    // reader ever sees; it is how the caller tells "no answer" from "an answer
+    // we did not like".
+    throw new InstanceError(0, String(cause?.message || 'network'));
+  }
+  // `unauthorised` stays the message so the sweep keeps recognising it, but the
+  // status is what everything written since should be reading.
+  if (response.status === 401) throw new InstanceError(401, 'unauthorised');
+  if (!response.ok) throw new InstanceError(response.status);
   return response;
 }
 

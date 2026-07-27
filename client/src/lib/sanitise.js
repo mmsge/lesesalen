@@ -56,6 +56,18 @@ export function rich(html) {
 }
 
 /**
+ * How many paragraphs are hidden behind a content warning.
+ *
+ * The hatch says "trykk for å visa 2 avsnitt", so it has to know. Counted off
+ * the markup rather than the DOM: this runs for every warned card in the feed
+ * and must not touch the document.
+ */
+export function countParagraphs(html) {
+  if (typeof html !== 'string' || html === '') return 1;
+  return Math.max(1, (html.match(/<p[\s>]/gi) || []).length);
+}
+
+/**
  * Reduce remote markup to plain text.
  *
  * For anything the UI binds to a text node: display names, `spoiler_text`,

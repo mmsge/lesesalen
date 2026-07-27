@@ -1,38 +1,44 @@
 <script>
-  /** "side 143 av 400" plus a thin rule, when a post says where the reader is. */
-  import { t } from '../lib/i18n.svelte.js';
+  /**
+   * "side 143 av 320" plus a thin brass rule — and nothing at all otherwise.
+   *
+   * This renders only when the post carries a real page position: `posisjon`
+   * non-null AND `posisjonsmodus === 'side'` (BookWyrm's `PG`). See
+   * lib/progress.js. The reader can ask for percentages in Settings, and that
+   * is still computed from the page number and the edition's page count — never
+   * from anything else, and never when there is no page number to start with.
+   */
+  import { hasProgress, fractionOf } from '../lib/progress.js';
+  import { prefs } from '../lib/prefs.svelte.js';
+  import { t, formatNumber } from '../lib/i18n.svelte.js';
 
-  let { position = null, mode = 'side', pages = null } = $props();
+  let { enrichment = null, pages = null } = $props();
 
-  const fraction = $derived(
-    position === null
-      ? null
-      : mode === 'prosent'
-        ? Math.max(0, Math.min(1, position / 100))
-        : pages
-          ? Math.max(0, Math.min(1, position / pages))
-          : null,
-  );
+  const show = $derived(hasProgress(enrichment));
+  const position = $derived(show ? enrichment.posisjon : null);
+  const fraction = $derived(show ? fractionOf(position, pages) : null);
 
-  const label = $derived(
-    position === null
-      ? ''
-      : mode === 'prosent'
-        ? t('card.percent', { percent: position })
-        : pages
-          ? t('card.page', { page: position, pages })
-          : t('card.pageNoTotal', { page: position }),
-  );
+  const label = $derived.by(() => {
+    if (!show) return '';
+    // Percentages need a page count. Without one the page number stands alone,
+    // rather than a percentage of nothing.
+    if (prefs.percent && fraction !== null) {
+      return t('card.percent', { percent: formatNumber(Math.round(fraction * 100)) });
+    }
+    return pages
+      ? t('card.page', { page: formatNumber(position), pages: formatNumber(pages) })
+      : t('card.pageNoTotal', { page: formatNumber(position) });
+  });
 </script>
 
-{#if position !== null}
+{#if show}
   <p class="progress">
     {#if fraction !== null}
       <span class="bar" aria-hidden="true">
         <span class="fill" style:width={`${(fraction * 100).toFixed(1)}%`}></span>
       </span>
     {/if}
-    <span class="label">{label}</span>
+    <span class="figure">{label}</span>
   </p>
 {/if}
 
@@ -40,15 +46,15 @@
   .progress {
     display: flex;
     align-items: center;
-    gap: 0.6em;
-    margin: 0.6em 0 0;
-    font-size: 0.85rem;
+    gap: 8px;
+    margin: 8px 0 0;
+    font-size: 0.8rem;
     color: var(--paper-dim);
   }
 
   .bar {
-    flex: 1 1 6rem;
-    max-width: 10rem;
+    flex: 1 1 auto;
+    max-width: 84px;
     height: 2px;
     background: var(--rule);
     border-radius: 1px;
@@ -61,7 +67,8 @@
     background: var(--brass);
   }
 
-  .label {
+  .figure {
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 </style>

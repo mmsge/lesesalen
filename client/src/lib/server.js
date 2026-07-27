@@ -8,14 +8,71 @@
  * rather than glossing it; the server logs none of it and stores none of it.
  */
 
+/** 8 seconds, then one retry 2 seconds later, then it counts as a failure (5h). */
+const TIMEOUT_MS = 8000;
+const RETRY_AFTER_MS = 2000;
+
+/**
+ * A failed call, described well enough for the sweep notice to name the host
+ * and say what to do — a timeout, a rate limit with its `Retry-After`, or an
+ * instance that answered wrongly. The reader never sees the number.
+ */
+export class FetchProblem extends Error {
+  constructor(kind, { status = 0, retryAfter = null, host = null } = {}) {
+    super(kind);
+    this.name = 'FetchProblem';
+    /** 'tidsavbrot' | 'grense' | 'svikt' | 'ulesbar' */
+    this.kind = kind;
+    this.status = status;
+    this.retryAfter = retryAfter;
+    this.host = host;
+  }
+}
+
+async function attempt(path, payload) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  let response;
+  try {
+    response = await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+  } catch (cause) {
+    throw new FetchProblem(cause?.name === 'AbortError' ? 'tidsavbrot' : 'svikt');
+  } finally {
+    clearTimeout(timer);
+  }
+
+  if (response.status === 429) {
+    throw new FetchProblem('grense', {
+      status: 429,
+      retryAfter: response.headers.get('retry-after'),
+    });
+  }
+  if (!response.ok) throw new FetchProblem('svikt', { status: response.status });
+  try {
+    return await response.json();
+  } catch {
+    // A 200 that is not JSON is not something a retry fixes.
+    throw new FetchProblem('ulesbar', { status: response.status });
+  }
+}
+
 async function post(path, payload) {
-  const response = await fetch(path, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  if (!response.ok) throw new Error(`http ${response.status}`);
-  return response.json();
+  try {
+    return await attempt(path, payload);
+  } catch (problem) {
+    // One quiet retry for a timeout, before anything appears on screen. Rate
+    // limits and malformed answers are not made better by asking again at once.
+    if (problem instanceof FetchProblem && problem.kind === 'tidsavbrot') {
+      await new Promise((resolve) => setTimeout(resolve, RETRY_AFTER_MS));
+      return attempt(path, payload);
+    }
+    throw problem;
+  }
 }
 
 /**
