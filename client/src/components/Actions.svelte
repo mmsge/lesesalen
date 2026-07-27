@@ -45,6 +45,9 @@
   // Reading never stops; writing does. An expired session, no session at all,
   // no network, or a post the reader's instance simply cannot see.
   const locked = $derived(!account || item.demo || feed.expired || !net.online || unreachable);
+  // Reply is the one action offline does not stop: the composer queues it with
+  // its text intact, and the reader can still see and edit what will go out.
+  const replyLocked = $derived(!account || item.demo || feed.expired || unreachable);
 
   function markFailed(which) {
     failed[which] = true;
@@ -110,7 +113,7 @@
 
 <div class="actions" class:big>
   {#if big}
-    <button type="button" class="wide" onclick={startReply} aria-disabled={locked && !net.online ? undefined : locked}>
+    <button type="button" class="wide" onclick={startReply} aria-disabled={replyLocked ? true : undefined}>
       <Icon name="reply" size={20} />
       {t('action.replyTo')}
     </button>
@@ -119,7 +122,7 @@
       type="button"
       class="icon"
       aria-label={t('action.replyTo')}
-      aria-disabled={locked && net.online ? true : undefined}
+      aria-disabled={replyLocked ? true : undefined}
       onclick={(event) => {
         event.stopPropagation();
         startReply();
