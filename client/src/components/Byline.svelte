@@ -1,6 +1,10 @@
 <script>
   /**
-   * Who wrote it, and when.
+   * Who wrote it, and when — "Åsta · 3 t sidan".
+   *
+   * Tapping it goes to that person's own page (`/@handle@host`), not to a
+   * person filter on the feed: the page is a real address that can be shared,
+   * and it is the only thing here that works without a session.
    *
    * The display name is rendered from the structured field as plain text, and
    * custom emoji come from the `emojis` array plus shortcodes — never from
@@ -11,7 +15,7 @@
   import { formatAge, t } from '../lib/i18n.svelte.js';
   import { handleOf } from '../lib/filters.js';
 
-  let { account, createdAt, url = null, onperson = null } = $props();
+  let { account, createdAt, onperson = null } = $props();
 
   const name = $derived(plain(account?.display_name) || account?.username || account?.acct || '');
   const handle = $derived(handleOf(account));
@@ -20,82 +24,80 @@
   const parts = $derived.by(() => {
     const emojis = new Map((account?.emojis || []).map((emoji) => [emoji.shortcode, emoji.url]));
     if (!emojis.size) return [{ text: name }];
-    return name.split(/:([a-zA-Z0-9_]+):/g).map((chunk, index) =>
-      index % 2 === 1 && emojis.has(chunk)
-        ? { emoji: emojis.get(chunk), code: chunk }
-        : { text: chunk },
-    );
+    return name
+      .split(/:([a-zA-Z0-9_]+):/g)
+      .map((chunk, index) =>
+        index % 2 === 1 && emojis.has(chunk) ? { emoji: emojis.get(chunk), code: chunk } : { text: chunk },
+      );
   });
-
-  const domain = $derived(handle.includes('@') ? handle.split('@').pop() : '');
 </script>
 
-<div class="byline">
-  {#if onperson}
-    <button type="button" class="who" onclick={() => onperson(account)} title={t('action.byPerson')}>
+{#if onperson}
+  <button
+    type="button"
+    class="byline"
+    aria-label={t('action.byPerson', { name: name || handle })}
+    onclick={(event) => {
+      event.stopPropagation();
+      onperson(account);
+    }}
+  >
+    <span class="who">
       {#each parts as part, index (index)}
         {#if part.emoji}
           <img class="emoji" src={part.emoji} alt={`:${part.code}:`} loading="lazy" />
         {:else}{part.text}{/if}
       {/each}
-    </button>
-  {:else}
+    </span>
+    <span aria-hidden="true">·</span>
+    <time datetime={createdAt}>{t('card.ago', { age: formatAge(createdAt) })}</time>
+  </button>
+{:else}
+  <span class="byline">
     <span class="who">{name}</span>
-  {/if}
-  <span class="handle">{handle}</span>
-  {#if url}
-    <a class="when" href={url} rel="nofollow noopener noreferrer" target="_blank"
-       title={domain ? t('card.openOriginal', { domain }) : ''}>
-      <time datetime={createdAt}>{formatAge(createdAt)}</time>
-    </a>
-  {:else}
-    <time class="when" datetime={createdAt}>{formatAge(createdAt)}</time>
-  {/if}
-</div>
+    <span aria-hidden="true">·</span>
+    <time datetime={createdAt}>{t('card.ago', { age: formatAge(createdAt) })}</time>
+  </span>
+{/if}
 
 <style>
   .byline {
-    display: flex;
+    display: inline-flex;
     align-items: baseline;
-    gap: 0.5em;
-    font-size: 0.88rem;
-    color: var(--paper-dim);
+    gap: 0.35em;
     min-width: 0;
+    max-width: 100%;
+    padding: 0;
+    background: none;
+    border: 0;
+    font: inherit;
+    font-size: 0.8rem;
+    color: var(--paper-dim);
+    text-align: left;
+  }
+
+  button.byline {
+    /* The row it sits in is 44px tall; the text itself is the label. */
+    min-height: 44px;
+    align-items: center;
+    text-decoration: underline;
+    text-decoration-color: var(--rule);
+    text-underline-offset: 0.2em;
+  }
+
+  button.byline:hover {
+    color: var(--paper);
   }
 
   .who {
-    background: none;
-    border: 0;
-    padding: 0;
-    color: var(--paper);
-    font: inherit;
-    font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 14rem;
-  }
-
-  button.who:hover {
-    color: var(--brass);
-  }
-
-  .handle {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    min-width: 0;
+    max-width: 12rem;
   }
 
-  .when {
-    margin-left: auto;
-    color: var(--paper-dim);
-    text-decoration: none;
+  time {
     white-space: nowrap;
-  }
-
-  .when:hover {
-    color: var(--brass);
   }
 
   .emoji {

@@ -25,6 +25,8 @@
 import * as kista from './kista.js';
 import * as mastodon from './mastodon.js';
 import * as server from './server.js';
+import { retryAfterSeconds } from './errors.js';
+import { net } from './net.svelte.js';
 
 const FOLLOW_PAGES = 8; // up to ~640 follows; beyond that, ask for more explicitly
 const DEEPEN_BATCH = 6; // outbox pages per "load more" round
@@ -42,6 +44,16 @@ export const feed = $state({
   error: null,
   expired: false,
   restored: false, // rendered from the browser's own collection on load
+  /**
+   * Hosts that did not answer this round: `{ host, kind, until }`.
+   *
+   * A partial failure is never a blocking screen (§Errors) — the shelf shows
+   * what arrived and this becomes a notice above it (4c), with the host named
+   * because the host is the only thing the reader can act on.
+   */
+  failures: [],
+  unreadable: 0, // posts that came back as something we could not parse
+  followCount: 0, // how many accounts the reader follows, for the empty state
 });
 
 /** actor URI -> { account, page, done, total } */
@@ -65,7 +77,13 @@ function sortByDate() {
  */
 function bookOf(entry) {
   const real = entry.bok ? feed.books[entry.bok] : null;
-  if (real) return real;
+  if (real) {
+    // The edition record has no publication year, but the cover attachment's
+    // name usually did. Nothing else fills this in, and an absent year is a
+    // field the book sheet drops entirely rather than padding with a dash.
+    if (!real.aar && entry.bok_kladd?.aar) return { ...real, aar: entry.bok_kladd.aar };
+    return real;
+  }
   if (!entry.bok_kladd) return null;
   return {
     id: entry.bok || null,
@@ -155,6 +173,10 @@ async function findShelves(account) {
     cursor = maxId;
   }
 
+  // The empty state says "we looked through the 214 accounts you follow", and
+  // that number has to be the real one.
+  feed.followCount = follows.length;
+
   feed.phase = 'instansar';
   const domains = [...new Set(follows.map(mastodon.accountDomain).filter(Boolean))];
   const unknown = domains.filter((domain) => !bookwyrmDomains.has(domain));
@@ -172,7 +194,7 @@ async function findShelves(account) {
     const known = shelves.get(actor);
     // A restored shelf keeps its page cursor; only the account snapshot refreshes.
     if (known) known.account = who;
-    else shelves.set(actor, { account: who, page: 0, done: false, total: null });
+    else shelves.set(actor, { account: who, page: 0, done: false, total: null, refresh: false });
   }
   feed.shelves = shelves.size;
   followsRead = true;
@@ -185,19 +207,53 @@ async function findShelves(account) {
  * BookWyrm after all — is marked done rather than failing the sweep. One bad
  * account must not empty the feed.
  */
-async function readPage(actor, shelf) {
-  const page = shelf.page + 1;
+/**
+ * Note that a host did not answer, once per host per round.
+ *
+ * The shelf is left un-done on a rate limit or a timeout: it can be retried,
+ * and the notice offers exactly that. Only a shelf that answered wrongly is
+ * given up on for this session.
+ */
+function noteFailure(actor, problem) {
+  let host = actor;
+  try {
+    host = new URL(actor).hostname;
+  } catch {
+    /* an actor URI we could not parse is its own answer */
+  }
+  const kind = problem?.kind || 'svikt';
+  const existing = feed.failures.find((entry) => entry.host === host);
+  if (existing) return;
+  const wait = kind === 'grense' ? retryAfterSeconds(problem.retryAfter) : null;
+  feed.failures.push({
+    host,
+    kind,
+    seconds: wait ? wait.seconds : null,
+    exact: wait ? wait.exact : true,
+    until: wait ? Date.now() + wait.seconds * 1000 : null,
+  });
+}
+
+async function readPage(actor, shelf, { refresh = false } = {}) {
+  // A refresh re-reads the first page for anything new without winding the
+  // cursor back: the deep pages this reader has already walked stay walked.
+  const page = refresh ? 1 : shelf.page + 1;
   let result;
   try {
     result = await server.collection(actor, page);
-  } catch {
-    shelf.done = true;
+  } catch (problem) {
+    noteFailure(actor, problem);
+    if (problem?.kind === 'ulesbar') feed.unreadable += 1;
+    // A host that is merely busy or slow keeps its place in the queue; one that
+    // answered wrongly does not get asked again this session.
+    if (problem?.kind === 'svikt') shelf.done = true;
     return 0;
   }
 
-  shelf.page = page;
+  shelf.page = Math.max(shelf.page, page);
+  shelf.refresh = false;
   shelf.total = result.total ?? shelf.total;
-  if (!result.next) shelf.done = true;
+  if (!result.next && !refresh) shelf.done = true;
 
   Object.assign(feed.books, result.books);
   const added = append(result.entries.map((entry) => itemOf(entry, shelf.account)));
@@ -245,9 +301,26 @@ function missingBooks() {
   return [...wanted];
 }
 
+/**
+ * Stop a draft book from gleaming forever.
+ *
+ * `Cover.svelte` shows the "looking up" sweep while `utkast` is set, because a
+ * real cover may still be on its way. Once we have stopped asking, it is not on
+ * its way, and the cover should settle into its synthesised jacket rather than
+ * animating at an empty rectangle for the rest of the session.
+ */
+function settleDrafts() {
+  for (const item of feed.items) {
+    if (item.book?.utkast) item.book = { ...item.book, utkast: false };
+  }
+}
+
 async function catchUpBooks(attempt = 0) {
   const wanted = missingBooks();
-  if (!wanted.length || attempt >= BOOK_RETRIES.length) return;
+  if (!wanted.length || attempt >= BOOK_RETRIES.length) {
+    settleDrafts();
+    return;
+  }
   await new Promise((resolve) => setTimeout(resolve, BOOK_RETRIES[attempt]));
 
   let found = {};
@@ -267,6 +340,21 @@ async function catchUpBooks(attempt = 0) {
     kista.putBooks(found);
   }
   if (missingBooks().length) await catchUpBooks(attempt + 1);
+  else settleDrafts();
+}
+
+/**
+ * Forget one card, because the instance says it no longer exists (404/410).
+ *
+ * Only that card, and only from this reader's own collection. Nothing else in
+ * the app removes posts.
+ */
+export function drop(item) {
+  const uri = item?.core?.uri;
+  if (!uri) return;
+  feed.items = feed.items.filter((held) => held.core.uri !== uri);
+  seen.delete(uri);
+  kista.dropPost(uri);
 }
 
 function unfinished() {
@@ -290,6 +378,7 @@ export async function restore() {
       page: row.side || 0,
       done: Boolean(row.ferdig),
       total: row.totalt ?? null,
+      refresh: false,
     });
   }
   append(posts.map((row) => itemOf(row.beriking, row.konto)));
@@ -306,8 +395,13 @@ export async function restore() {
  */
 export async function load(account) {
   if (feed.loading || feed.exhausted) return;
+  // Offline is not an error: the collection in the browser is still a whole
+  // library. We simply do not attempt requests that cannot succeed.
+  if (!net.online) return;
   feed.loading = true;
   feed.error = null;
+  feed.failures = [];
+  feed.unreadable = 0;
 
   try {
     if (!followsRead) {
@@ -329,7 +423,8 @@ export async function load(account) {
       const byHost = new Map();
       let queued = 0;
       for (const [actor, shelf] of shelves) {
-        if (shelf.page !== 0 || !shelf.account) continue;
+        if (!shelf.account) continue;
+        if (shelf.page !== 0 && !shelf.refresh) continue;
         const host = mastodon.accountDomain(shelf.account) || actor;
         if (!byHost.has(host)) byHost.set(host, []);
         byHost.get(host).push([actor, shelf]);
@@ -341,7 +436,7 @@ export async function load(account) {
       await Promise.all(
         [...byHost.values()].map(async (queue) => {
           for (const [actor, shelf] of queue) {
-            await readPage(actor, shelf);
+            await readPage(actor, shelf, { refresh: shelf.refresh });
             feed.swept += 1;
             sortByDate();
           }
@@ -367,7 +462,10 @@ export async function load(account) {
     kista.prune();
     catchUpBooks();
   } catch (error) {
-    if (String(error.message) === 'unauthorised') feed.expired = true;
+    // An expired session stops the sweep and nothing else. The collection stays
+    // exactly where it is, the reader keeps reading it, and nobody is logged
+    // out (§Errors, 5d).
+    if (error?.status === 401 || String(error.message) === 'unauthorised') feed.expired = true;
     else feed.error = 'feed.error';
   } finally {
     feed.loading = false;
@@ -386,6 +484,34 @@ export function depth() {
   return { read, total };
 }
 
+/** How far back the collection reaches, for the tail block (4d). */
+export function reach() {
+  let oldest = null;
+  for (const item of feed.items) {
+    const at = Date.parse(item.core.created_at);
+    if (!Number.isFinite(at)) continue;
+    if (oldest === null || at < oldest) oldest = at;
+  }
+  return oldest === null ? null : new Date(oldest);
+}
+
+/**
+ * Run the sweep again — pull-to-refresh, and the per-host retry in the notice.
+ *
+ * Every shelf gets its first page re-read for anything new. The deep pages
+ * already walked are kept: refreshing must not cost the reader the back
+ * catalogue they waited for.
+ */
+export function resweep() {
+  followsRead = false;
+  feed.exhausted = false;
+  feed.failures = [];
+  for (const shelf of shelves.values()) {
+    shelf.refresh = true;
+    shelf.done = false;
+  }
+}
+
 export function reset() {
   feed.items = [];
   feed.books = {};
@@ -396,6 +522,9 @@ export function reset() {
   feed.shelves = 0;
   feed.sweeping = 0;
   feed.swept = 0;
+  feed.failures = [];
+  feed.unreadable = 0;
+  feed.followCount = 0;
   feed.phase = 'kvile';
   shelves.clear();
   seen.clear();
@@ -409,16 +538,37 @@ export async function forget() {
 }
 
 /**
- * One person's shelf, for the author page.
+ * The actor URI of `name@host`, without asking anybody.
+ *
+ * The person page is public: it has to render for a visitor with no session,
+ * and without one there is no instance to look an account up at. BookWyrm's
+ * actor URIs are `https://<host>/user/<name>` — the same shape enrich.py reads
+ * post kinds out of — so that is what we try. When there *is* a session the
+ * account's own `uri` is used instead, because that is authoritative.
+ *
+ * A guess that is wrong costs one 404 from our own server and an empty shelf.
+ * It never becomes a fetch primitive: `/api/samling` still requires the host to
+ * be a confirmed BookWyrm instance and still builds every URL itself (ADR 0008).
+ */
+export function guessActor(who) {
+  const handle = typeof who === 'string' ? who : who?.acct || '';
+  const [name, host] = String(handle).replace(/^@/, '').split('@');
+  if (!name || !host || !/^[a-z0-9.-]+$/i.test(host)) return null;
+  return `https://${host}/user/${encodeURIComponent(name)}`;
+}
+
+/**
+ * One person's shelf, for the person page.
  *
  * Goes through the same outbox walk, so it reaches their whole back catalogue
- * rather than the recent slice the reader's instance happens to hold.
+ * rather than the recent slice the reader's instance happens to hold — and it
+ * works with no session at all, because `/api/samling` needs no token.
  */
 export async function shelfOf(who, pages = 2) {
-  const actor = mastodon.actorUri(who);
+  const actor = mastodon.actorUri(who) || guessActor(who);
   if (!actor) return { items: [], books: {} };
 
-  const domain = mastodon.accountDomain(who);
+  const domain = mastodon.accountDomain(who) || new URL(actor).hostname.toLowerCase();
   if (domain && !bookwyrmDomains.has(domain)) {
     const answers = await server.instances([domain]);
     bookwyrmDomains.set(domain, Boolean(answers[domain]?.bookwyrm));

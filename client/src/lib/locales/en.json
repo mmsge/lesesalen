@@ -5,59 +5,72 @@
     "skipToContent": "Skip to content"
   },
   "nav": {
-    "feed": "Reading room",
     "about": "About",
     "privacy": "Privacy",
+    "source": "Source",
     "settings": "Settings",
     "logIn": "Log in",
-    "logOut": "Log out",
-    "backToFeed": "Back to the reading room"
+    "back": "Back",
+    "backToFeed": "Back to the reading room",
+    "sections": "Sections of Lesesalen"
   },
-  "login": {
-    "heading": "Log in on your own instance",
-    "lead": "Lesesalen is a client. You log in to your own server, and the token stays in your browser.",
-    "domainLabel": "Your instance's domain",
-    "domainPlaceholder": "for example chaos.social",
-    "domainHelp": "Enter the domain, not your username. Pasting the full address works too.",
-    "submit": "Continue to your instance",
-    "working": "Registering…",
-    "returning": "Finishing the login…",
-    "errorDomain": "That does not look like a domain. Try something like chaos.social.",
-    "errorApps": "Could not register Lesesalen with that instance. Check the domain and try again.",
-    "errorToken": "The login did not complete. Please try again.",
-    "errorState": "The instance's reply did not match the request, so the login was stopped as a precaution.",
-    "errorDenied": "You declined access. Nothing was stored."
+  "tab": {
+    "feed": "Reading room",
+    "filter": "Filter",
+    "settings": "Settings"
   },
-  "landing": {
-    "heading": "Only the book posts.",
-    "lead": "BookWyrm has no public API, but it federates. Its posts carry a rating, a review title, a quoted passage, how far into the book the reader is and a link to the book — fields Mastodon has no column for, and therefore throws away. Lesesalen reads the outboxes of the BookWyrm accounts you follow, recovers those fields and lays them out as five distinct kinds of card.",
-    "principleHeading": "You see a post because you follow that account",
-    "principle": "You see a post because you follow that account. Your follow list is read in your browser, and the feed is the outboxes of those you follow who are on a BookWyrm instance. Nothing more.",
-    "noCrawlerHeading": "No crawler",
-    "noCrawler": "Lesesalen does not walk the fediverse collecting BookWyrm posts into a database. The server never fetches anything on its own initiative: every single request happens because a reader is present and follows that account. The posts are public, but public is not the same as consenting to be aggregated and re-served by a third party the author never heard of.",
-    "sampleHeading": "What the five cards look like",
-    "sampleNote": "The examples below are invented. A stranger arriving here never sees other people's reading.",
-    "cta": "Log in with your own instance"
+  "shelf": {
+    "now": "On the shelf",
+    "all": "The whole shelf"
+  },
+  "state": {
+    "shelves": "{n} shelves",
+    "someShelves": "{done} of {total} shelves",
+    "fetching": "Fetching",
+    "fromCollection": "From the collection",
+    "offline": "Offline"
+  },
+  "sweep": {
+    "progress": "Fetching the shelf of {done} of {total} accounts",
+    "note": "One request per account yields fifteen posts. The first time takes a while, because every book has to be looked up; after that the collection lives in your browser.",
+    "missing": "{n} shelves missing",
+    "timeout": "{host} — timed out",
+    "rateLimit": "{host} — wait {min} min",
+    "rateLimitVague": "{host} — wait about {min} min",
+    "failed": "{host} — did not answer properly",
+    "retry": "Try again",
+    "rest": "The rest of the shelf is complete. You can keep reading while these wait.",
+    "unreadable": "{n} posts could not be read"
+  },
+  "expired": {
+    "heading": "The login has expired",
+    "body": "{domain} no longer accepts the login. You can keep reading what is already in the browser, but not reply or fetch anything new.",
+    "again": "Log in again"
+  },
+  "queue": {
+    "waiting": "{n} replies waiting",
+    "willSend": "{text} will be sent when you are back online.",
+    "edit": "Edit",
+    "discard": "Discard"
+  },
+  "empty": {
+    "noBookwyrm": "Your shelf is empty because nobody you follow is on BookWyrm.",
+    "noBookwyrmBody": "We looked through the {n} accounts you follow. None of them are on a BookWyrm instance, so there are no book posts to fetch. Lesesalen does not look outside your following list.",
+    "findPeople": "Find people to follow on BookWyrm",
+    "findPeopleHelp": "The link opens bookwyrm.social in your browser. Follow somebody there and their shelf appears here by itself.",
+    "recheck": "Check the following list again",
+    "noMatch": "The filter finds nothing.",
+    "noMatchPerson": "{who} hasn't posted any {kind}.",
+    "noMatchBody": "There are {n} posts on the shelf. The filter finds nothing.",
+    "showAllFrom": "Show all {n} posts from {who}",
+    "showFromEveryone": "Show from everyone"
   },
   "feed": {
     "loading": "Loading…",
     "empty": "No book posts yet.",
     "emptyDetail": "None of the BookWyrm accounts you follow has posted anything we could read.",
     "error": "Something went wrong while fetching.",
-    "retry": "Try again",
-    "sessionExpired": "Your instance no longer accepts the token. Please log in again."
-  },
-  "samling": {
-    "reading": "Reading your follow list…",
-    "probing": "Checking which instances run BookWyrm…",
-    "sweeping": "Fetching the shelf of {done} of {total} accounts…",
-    "sweepingDetail": "One request per account yields fifteen posts. The first time takes a while, because every book has to be looked up; after that the collection lives in your browser.",
-    "deepening": "Reaching further back — {done} of {total} pages…",
-    "deepen": "Reach further back",
-    "deepenHelp": "Goes deeper into the outboxes of the people you follow, one round each in turn, so a single very active shelf cannot take all the room.",
-    "end": "The whole shelf is in, from all {count} accounts.",
-    "noShelves": "No BookWyrm accounts in your follow list.",
-    "noShelvesDetail": "Lesesalen builds the feed from the outboxes of the BookWyrm accounts you follow. Follow somebody on a BookWyrm instance and they will appear here."
+    "retry": "Try again"
   },
   "kind": {
     "omtale": "Review",
@@ -67,54 +80,103 @@
     "lesestatus": "Reading status"
   },
   "status": {
-    "vil-lesa": "Wants to read",
-    "byrja": "Started",
-    "ferdig": "Finished",
-    "slutta": "Stopped",
-    "ukjend": "Reading status"
+    "wantToRead": "{who} wants to read {title}",
+    "started": "{who} started {title}",
+    "finished": "{who} finished {title}",
+    "stale": "{who} hasn't touched {title} since {since}",
+    "updated": "{who} updated the reading status for {title}",
+    "inferredBy": "Inferred by Lesesalen"
   },
   "card": {
+    "ago": "{age} ago",
     "boostedBy": "{name} boosted",
-    "showContent": "Show the post",
-    "hideContent": "Hide the post",
     "contentWarning": "Content warning",
     "ratingOf": "{rating} out of 5",
-    "noRating": "No rating",
     "page": "page {page} of {pages}",
     "pageNoTotal": "page {page}",
     "percent": "{percent}% through",
-    "byAuthor": "by {authors}",
-    "unknownBook": "Unknown book",
-    "openOriginal": "Open on {domain}",
-    "openBook": "View the book on BookWyrm",
-    "coverAlt": "Cover: {title}",
-    "noCover": "No cover"
+    "sourceWithPage": "{title}, p. {page}",
+    "open": "Open the {kind} from {who}"
+  },
+  "cover": {
+    "unknown": "Unknown book",
+    "alt": "Cover: {title}",
+    "holdFor": "{title} — hold for book info",
+    "lookingUp": "{title} — looking up the cover",
+    "synthesised": "{title} — no cover in BookWyrm"
+  },
+  "spoiler": {
+    "reveal": "Tap to show {n} paragraphs",
+    "hide": "Hide"
+  },
+  "post": {
+    "readAll": "Read the full review"
+  },
+  "tail": {
+    "bottom": "Bottom shelf",
+    "read": "You've read through {n} posts, back to {date}.",
+    "more": "Reach further back",
+    "help": "Goes deeper into the outboxes, one round each in turn, so a single very active shelf cannot take all the room.",
+    "fetching": "Reaching further back…",
+    "end": "The whole shelf is in, from all {count} accounts."
+  },
+  "pull": {
+    "hint": "Pull to refresh",
+    "release": "Release to refresh"
   },
   "filter": {
-    "heading": "Filters",
-    "kind": "Kind",
-    "person": "Person",
+    "heading": "Filter",
+    "kind": "Type",
     "book": "Book",
-    "clear": "Clear",
+    "person": "Person",
+    "clear": "Reset",
     "clearOne": "Remove the {label} filter",
-    "showing": "Showing {shown} of {total} posts",
-    "linkable": "Filters live in the address, so you can share or bookmark a view."
+    "showing": "Showing {shown} of {total}",
+    "linkable": "Filters live in the address, so you can share or bookmark the view.",
+    "apply": "Show {n} posts"
+  },
+  "book": {
+    "pages": "{pages} pages",
+    "postsHere": "{n} posts on your shelf",
+    "filterOn": "Filter the feed on this book",
+    "open": "Open in BookWyrm",
+    "openOn": "Open on {host}",
+    "copy": "Copy link to the book",
+    "copied": "Link copied",
+    "copyFailed": "Could not copy the link.",
+    "cannotShelve": "Lesesalen can't add the book to your own shelf — do that in BookWyrm.",
+    "notHere": "That book is not in your collection."
+  },
+  "person": {
+    "shelf": "Shelf",
+    "all": "All",
+    "posts": "{n} book posts",
+    "books": "{n} books",
+    "copyLink": "Copy the link",
+    "copied": "Link copied",
+    "copyFailed": "Could not copy the link.",
+    "publicNote": "This address can be shared. It shows only public book posts, and needs no login.",
+    "loading": "Loading the shelf…",
+    "empty": "No book posts found for this account.",
+    "reviews": "Reviews",
+    "quotes": "Quotations"
   },
   "composer": {
-    "reply": "Reply",
     "replyTo": "Reply to {name}",
     "placeholder": "Write your reply…",
-    "send": "Send reply",
+    "send": "Send the reply",
     "sending": "Sending…",
+    "sent": "Reply sent.",
+    "queue": "Add to the queue",
+    "queued": "The reply will be sent when you are back online.",
     "cancel": "Cancel",
-    "sent": "Your reply was posted.",
-    "error": "Could not post the reply.",
+    "discard": "You have written something that has not been sent. Leave the reply? The draft will be kept.",
     "caveat": "Your reply becomes an ordinary Mastodon post, not a BookWyrm comment. Mastodon cannot mint BookWyrm objects.",
-    "visibility": "Visibility",
+    "warning": "Warning",
+    "contentWarning": "Content warning",
     "visibilityPublic": "Public",
     "visibilityUnlisted": "Unlisted",
-    "visibilityPrivate": "Followers only",
-    "contentWarning": "Content warning (optional)"
+    "visibilityPrivate": "Followers only"
   },
   "action": {
     "favourite": "Favourite",
@@ -122,34 +184,93 @@
     "boost": "Boost",
     "unboost": "Remove boost",
     "replyTo": "Reply",
-    "byPerson": "See this person's book posts",
-    "byBook": "Filter on this book",
+    "share": "Share",
+    "sending": "Sending…",
+    "byPerson": "Open {name}'s shelf",
     "notOnYourInstance": "Your instance does not have this post"
   },
-  "author": {
-    "heading": "Book posts from {name}",
-    "lead": "Fetched through your own instance, with your own token. Exactly what Mastodon would show you.",
-    "loading": "Loading posts…",
-    "empty": "No book posts found for this account.",
-    "back": "Back"
+  "sheet": {
+    "close": "Close"
   },
   "settings": {
     "heading": "Settings",
+    "account": "Your account",
+    "loggedInAs": "Logged in on {domain}",
+    "tokenHere": "The login lives in this browser only.",
     "language": "Language",
     "languageNn": "Nynorsk",
     "languageEn": "English",
-    "account": "Account",
-    "loggedInAs": "Logged in on {domain}",
-    "ephemeral": "Log me out when I close the tab",
-    "ephemeralHelp": "For shared machines. The token then lives in sessionStorage and disappears when the tab closes.",
-    "logOut": "Log out",
-    "loggingOut": "Logging out…",
-    "logOutHelp": "The token is revoked at your instance first, then cleared from the browser.",
-    "collection": "The collection",
+    "collection": "Collection in this browser",
+    "collectionSize": "{posts} posts, {books} books",
     "collectionHelp": "The posts we have fetched live in your browser, so we do not have to fetch everything again each time. None of it is on our server.",
     "clearCollection": "Clear the collection",
-    "clearingCollection": "Clearing…",
-    "collectionCleared": "The collection is cleared. It rebuilds the next time you open the feed."
+    "clearCollectionNote": "Fetches everything again",
+    "collectionCleared": "The collection is cleared.",
+    "reading": "Reading",
+    "cwOpen": "Show warnings unwrapped",
+    "percent": "Show page numbers as percent",
+    "ephemeral": "Log me out when I close the tab",
+    "ephemeralHelp": "For shared machines. The collection is then not written to disk.",
+    "logOut": "Log out",
+    "loggingOut": "Logging out…",
+    "logOutHelp": "Logging out revokes the login at your instance first, then deletes the collection from this browser."
+  },
+  "login": {
+    "heading": "Which instance do you read from?",
+    "lead": "Lesesalen has no accounts of its own. You log in on your own instance, and it tells us who you follow.",
+    "domainLabel": "Instance or handle",
+    "domainPlaceholder": "for example chaos.social",
+    "domainHelp": "Enter your full handle, or just the domain — either works.",
+    "recent": "Recently used",
+    "notProbed": "Not contacted yet",
+    "submit": "Continue",
+    "continueTo": "Continue to {domain}",
+    "working": "Registering…",
+    "passwordThere": "Your password is entered at {domain}, never here.",
+    "didYouMean": "Did you mean {domain}?",
+    "consentHeading": "You are being sent to {domain}",
+    "consentLead": "You approve it there yourself. Come back without approving and nothing happens.",
+    "asksFor": "Lesesalen asks for",
+    "askFollowsTitle": "Reading who you follow",
+    "askFollowsWhy": "So we know which shelves exist. The list is read in your browser.",
+    "askWriteTitle": "Writing replies, favourites and boosts",
+    "askWriteWhy": "Only when you press the button. Lesesalen never posts on its own.",
+    "cannot": "Lesesalen cannot",
+    "cannotDm": "See your direct messages",
+    "cannotFollow": "Follow or unfollow anybody for you",
+    "cannotShelve": "Put books on your shelf in BookWyrm",
+    "open": "Open {domain}",
+    "tokenStays": "The login stays in this browser. You can revoke it from {domain} at any time.",
+    "returning": "Finishing the login…",
+    "errorDomain": "That does not look like a domain.",
+    "errorNotAnInstance": "We found no fediverse instance at that domain.",
+    "errorApps": "Could not register Lesesalen with that instance. Check the domain and try again.",
+    "errorToken": "The login did not complete. Please try again.",
+    "errorState": "The instance's reply did not match the request, so the login was stopped as a precaution.",
+    "errorDenied": "You declined access. Nothing was stored."
+  },
+  "landing": {
+    "heading": "Only the book posts.",
+    "lead": "BookWyrm has no public API, but it federates. Lesesalen reads the outboxes of the BookWyrm accounts you follow, recovers the fields Mastodon throws away, and lays them out as five distinct kinds of card.",
+    "principleHeading": "You see a post because you follow that account",
+    "principle": "Your follow list is read in your browser, and the feed is the outboxes of those you follow who are on a BookWyrm instance. Nothing more.",
+    "noCrawlerHeading": "No crawler",
+    "noCrawler": "The server never fetches anything on its own initiative: every single request happens because a reader is present and follows that account.",
+    "sampleHeading": "What the cards look like",
+    "sampleNote": "The example below is invented. A stranger arriving here never sees other people's reading.",
+    "cta": "Log in with your own instance"
+  },
+  "error": {
+    "generic": "Something went wrong.",
+    "forbidden": "Your instance does not allow this.",
+    "gone": "That post no longer exists.",
+    "goneDetail": "It has been removed from the instance it was on.",
+    "writeFailed": "That didn't work. Try again.",
+    "notFound": "Page not found.",
+    "notFoundDetail": "That address does not exist in Lesesalen.",
+    "offline": "No connection. Check your network.",
+    "unreachable": "Could not fetch the post.",
+    "unreachableDetail": "The instance did not answer. The post may still be there — try again shortly."
   },
   "about": {
     "title": "About Lesesalen",
@@ -238,10 +359,13 @@
     "rights": "There is no export on the server side, because there is nothing there to export. The collection in your browser you can clear at any time under Settings. To remove your login, log out: the token is revoked at your instance first, then cleared from the browser, and the collection goes with it.",
     "updated": "Last changed {date}."
   },
-  "error": {
-    "generic": "Something went wrong.",
-    "notFound": "Page not found.",
-    "notFoundDetail": "That address does not exist in Lesesalen.",
-    "offline": "No connection. Check your network."
+  "age": {
+    "now": "now",
+    "minute": "{n} min",
+    "hour": "{n} h",
+    "day": "{n} d",
+    "week": "{n} w",
+    "month": "{n} mo",
+    "year": "{n} y"
   }
 }

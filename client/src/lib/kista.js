@@ -147,6 +147,37 @@ export async function putBooks(books) {
   });
 }
 
+/** Forget one post, because its instance says it is gone (404/410). */
+export async function dropPost(uri) {
+  if (!uri) return;
+  await transact([POSTS], 'readwrite', (transaction) => {
+    transaction.objectStore(POSTS).delete(uri);
+  });
+}
+
+/**
+ * How much of the reader's disk the collection is using, for Settings (4h).
+ *
+ * "Tøm samlinga" should be an informed action, and "37 innlegg, 14 bøker —
+ * 1,2 MB" is what makes it one. The estimate is the browser's own, for the
+ * whole origin; it is the only number available and it is close enough to be
+ * useful.
+ */
+export async function size() {
+  const counts = await transact([POSTS, BOOKS], 'readonly', async (transaction) => ({
+    posts: await request(() => transaction.objectStore(POSTS).count()),
+    books: await request(() => transaction.objectStore(BOOKS).count()),
+  }));
+  let bytes = null;
+  try {
+    const estimate = await navigator.storage?.estimate?.();
+    if (estimate && typeof estimate.usage === 'number') bytes = estimate.usage;
+  } catch {
+    /* not supported, or blocked: the counts are still worth showing */
+  }
+  return { posts: counts?.posts ?? 0, books: counts?.books ?? 0, bytes };
+}
+
 /** Drop the oldest posts once the collection outgrows its cap. */
 export async function prune(max = MAX_POSTS) {
   await transact([POSTS], 'readwrite', async (transaction) => {

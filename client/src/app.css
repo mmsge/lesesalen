@@ -1,9 +1,12 @@
 /*
- * Lesesalen's design tokens.
+ * Lesesalen's design tokens — "Lampelys": a reading room at night.
  *
- * Mood: a reading room at night. Brass lamps, warm paper under low light — not
- * a black-background Mastodon client. Serif for anything a reader wrote, sans
- * for anything the app says. Covers are the loudest thing on the page.
+ * Brass on ink, lit shelf rails between posts, cover-led cards. Serif for
+ * anything a reader wrote, sans for anything the app says. Covers are the
+ * loudest thing on the page.
+ *
+ * Mobile-first: every screen is drawn at 393px and grows into the existing
+ * desktop column, which stays a single column of `min(100% - 2.5rem, 44rem)`.
  *
  * Fonts are self-hosted (imported below, bundled by Vite). No CDN, anywhere: a
  * CDN is a third party who can serve script into this origin, which would
@@ -12,28 +15,60 @@
 @import './fonts.css';
 
 :root {
-  --ink-900: #0f0d0b; /* page */
-  --ink-800: #17140f; /* card */
-  --ink-700: #221d16; /* raised */
+  /* Surfaces, darkest first. */
+  --ink: #0f0d0b; /* page background, text on brass */
+  --ink-deep: #0d0b09; /* bottom tab bar, fixed action bar */
+  --panel: #17140f; /* inset panels, notices, inputs, textarea */
+  --panel-raised: #221d16; /* quotation background, skeleton blocks */
+  --rule: #33291e; /* all hairlines, unselected chip borders, avatars */
+
+  /* Text, brightest first. */
+  --paper-bright: #f6efe1; /* headings, book titles, cover type */
   --paper: #ede4d3; /* primary text */
-  --paper-dim: #a79b85; /* secondary text */
-  --brass: #c9a227; /* accent, ratings, active states */
-  --oxblood: #7a2e2e; /* destructive, stopped reading */
-  --moss: #4a5d42; /* finished reading */
-  --rule: #33291e; /* hairlines */
+  --paper-prose: #ded3bf; /* body prose in cards */
+  --paper-dim: #a79b85; /* secondary text, icons at rest, all labels */
+
+  --brass: #c9a227; /* active tab, ratings, primary button, links */
+  --moss: #4a5d42; /* the "Ferdig med" status light, and nothing else */
+
+  /* The only two new colours in the redesign. Warnings, never errors-as-drama:
+     a failed instance, an expired session, log out, an over-limit counter. */
+  --warn: #c78a5e;
+  --warn-rule: #8a5a3b;
+
+  /* Decorative greys, always paired with text and used nowhere else: a disabled
+     tab icon and the offline dot; the dashed borders on inferred and unknown
+     states. Named so they cannot drift into meaning something. */
+  --grey-off: #524839;
+  --grey-dashed: #4a3f30;
+
+  /* The previous palette's names, kept as aliases so nothing silently loses its
+     background. New code should use the names above. */
+  --ink-900: var(--ink);
+  --ink-800: var(--panel);
+  --ink-700: var(--panel-raised);
+  --oxblood: #7a2e2e;
 
   --serif: 'Literata Variable', 'Iowan Old Style', Georgia, serif;
   --sans: 'Source Sans 3 Variable', system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   --measure: 34rem; /* reading width */
-  --column: 44rem; /* feed column */
-  --radius: 3px;
+  --column: 44rem; /* feed column, and where the shelf stops being a wall */
+  --radius: 3px; /* buttons, panels, inputs */
+  --radius-cover: 2px; /* covers and cover-derived shapes */
 
   --step-0: 1rem;
   --step-1: 1.15rem;
   --step-2: 1.45rem;
   --step-3: 1.9rem;
   --step-4: 2.5rem;
+
+  /* Safe areas. The bottom bar and both sheets sit on the first; the header
+     uses the second when the app is installed and runs without browser chrome. */
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --tabbar: 62px; /* how much the fixed bottom bar hides */
 
   color-scheme: dark;
 }
@@ -48,7 +83,7 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: var(--ink-900);
+  background: var(--ink);
   color: var(--paper);
 }
 
@@ -58,6 +93,8 @@ body {
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* Nothing in this app scrolls sideways; a card that overflows is a bug. */
+  overflow-x: hidden;
 }
 
 h1,
@@ -93,21 +130,24 @@ button {
 /* Everything a reader wrote is set in the serif, at reading measure. */
 .prose {
   font-family: var(--serif);
-  font-size: var(--step-1);
-  line-height: 1.65;
-  max-width: var(--measure);
+  font-size: 1.05rem;
+  line-height: 1.68;
+  color: var(--paper-prose);
 }
 
 .prose p {
-  margin: 0 0 0.85em;
+  margin: 0 0 1em;
 }
 
 .prose p:last-child {
   margin-bottom: 0;
 }
 
+/* Foreign HTML: links and mentions get brass and an underline, and everything
+   else the sanitiser let through is left as prose (4j). */
 .prose a {
   color: var(--brass);
+  text-decoration: underline;
 }
 
 /* Mastodon marks parts of a link URL invisible so it can show a tidy stub. */
@@ -137,14 +177,89 @@ button {
 }
 
 /*
+ * The shelf rail — the signature element, and the only divider between posts.
+ *
+ * Rails go BETWEEN posts: never above the first, never below the last, except
+ * the one that closes the feed before the tail block.
+ */
+.rail {
+  height: 9px;
+  background: linear-gradient(#5d4527, #2a1e14 60%, #17110b);
+  border-top: 1px solid rgba(201, 162, 39, 0.45);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.7);
+}
+
+/* "Nothing below this": the feed bottom and every empty state. */
+.rail.dim {
+  background: linear-gradient(#3a2c1a, #241a12 60%, #17110b);
+  border-top-color: rgba(201, 162, 39, 0.25);
+  box-shadow: none;
+}
+
+/* Every uppercase micro-label in the app: kind labels, section headings. */
+.label {
+  margin: 0;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--brass);
+}
+
+.label.dim {
+  color: var(--paper-dim);
+}
+
+/* The two button shapes the whole app reuses. Both clear 44px by design. */
+.primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6em;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 1.1em;
+  background: var(--brass);
+  border: 1px solid var(--brass);
+  border-radius: var(--radius);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.primary:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6em;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 1.1em;
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  color: var(--paper);
+  font-size: 0.95rem;
+}
+
+.secondary:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/*
  * Animations live in stylesheets, never as JS-injected <style> elements: the
  * CSP has no 'unsafe-inline' in style-src, and Svelte's built-in transitions
  * work by injecting keyframes at runtime. Use classes, not transition:.
  */
-@keyframes fade-up {
+@keyframes lampRise {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -152,8 +267,64 @@ button {
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .enters {
-    animation: fade-up 220ms ease-out both;
+@keyframes lampSheet {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes lampFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes lampSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes lampSweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.enters {
+  animation: lampRise 0.35s ease both;
+}
+
+.fades {
+  animation: lampFade 0.25s ease both;
+}
+
+.sheet-enters {
+  animation: lampSheet 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/*
+ * One guard for every animation in the app, including the ones declared inside
+ * component <style> blocks. The sweep, the spinner and the cover gleam become
+ * static and show their figures instead — which is why every one of them is
+ * paired with a number or a word somewhere on screen.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

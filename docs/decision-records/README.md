@@ -57,3 +57,6 @@ decision or an agent made it without input**:
 | [0009](0009-the-collection-lives-in-the-readers-browser.md) | The collection persists in the reader's own browser, never on the server | Accepted |
 | [0010](0010-cards-render-before-their-editions-are-fetched.md) | A card renders before its edition is fetched, from the cover attachment's name | Accepted |
 | [0011](0011-outbox-pages-are-shared-between-readers.md) | Outbox pages are cached in memory and shared between readers | Accepted |
+| [0012](0012-a-page-number-needs-positionmode-pg.md) | A page number is a page number only when `positionMode` says `PG` | Accepted |
+| [0013](0013-nobody-ever-gave-up-on-a-book.md) | Lesesalen never says a reader gave up on a book | Accepted |
+| [0014](0014-a-book-looks-the-same-everywhere.md) | A book's cloth and silhouette are a pure function of its work id | Accepted |

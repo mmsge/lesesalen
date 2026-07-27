@@ -233,10 +233,27 @@ def _published(value: Any) -> str | None:
     return text
 
 
-def _position_mode(value: Any) -> str:
-    if isinstance(value, str) and value.strip().lower() in {"pct", "percent", "prosent"}:
+def _position_mode(value: Any) -> str | None:
+    """What `position` is counted in — or None when the object did not say.
+
+    BookWyrm sends `positionMode: "PG"` for a page number and `"PCT"` for a
+    percentage, and most objects carry neither. Defaulting the absent case to
+    "side" was a quiet lie: it turned "this post has no reading position" into
+    "this post is on page N", and the client cannot tell the difference.
+
+    A page position is genuinely rare, and the UI is built around that: the
+    progress line renders only for an explicit page mode, and the comment card's
+    brass left border follows the same test (client lib/progress.js). Returning
+    None here is what makes that test mean something.
+    """
+    if not isinstance(value, str):
+        return None
+    text = value.strip().lower()
+    if text in {"pct", "percent", "prosent"}:
         return "prosent"
-    return "side"
+    if text in {"pg", "page", "pages", "side"}:
+        return "side"
+    return None
 
 
 def _book_url(document: dict[str, Any], host: str) -> str | None:

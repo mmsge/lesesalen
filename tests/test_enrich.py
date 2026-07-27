@@ -69,6 +69,40 @@ def test_percentage_position_mode() -> None:
     assert parsed["posisjonsmodus"] == "prosent"
 
 
+def test_absent_position_mode_is_none_not_pages() -> None:
+    """No `positionMode` means no page position — not "assume pages".
+
+    The client renders the progress line, and colours the comment card's left
+    border, only when the mode is an explicit page mode. Defaulting the absent
+    case to "side" would turn every stray `position` into "side N" on screen.
+    """
+    parsed = enrich.parse_object(
+        {
+            "type": "Comment",
+            "content": "<p>hm</p>",
+            "position": 88,
+            "inReplyToBook": "https://bookwyrm.social/book/9",
+        },
+        HOST,
+    )
+    assert parsed["posisjonsmodus"] is None
+    assert parsed["posisjon"] == 88
+
+
+def test_bookwyrm_pg_position_mode_is_pages() -> None:
+    parsed = enrich.parse_object(
+        {
+            "type": "Comment",
+            "content": "<p>hm</p>",
+            "position": 88,
+            "positionMode": "PG",
+            "inReplyToBook": "https://bookwyrm.social/book/9",
+        },
+        HOST,
+    )
+    assert parsed["posisjonsmodus"] == "side"
+
+
 @pytest.mark.parametrize(
     "phrase,expected",
     [

@@ -5,59 +5,72 @@
     "skipToContent": "Gå til innhaldet"
   },
   "nav": {
-    "feed": "Lesesalen",
     "about": "Om",
     "privacy": "Personvern",
+    "source": "Kjeldekode",
     "settings": "Innstillingar",
     "logIn": "Logg inn",
-    "logOut": "Logg ut",
-    "backToFeed": "Attende til lesesalen"
+    "back": "Attende",
+    "backToFeed": "Attende til lesesalen",
+    "sections": "Delar av Lesesalen"
   },
-  "login": {
-    "heading": "Logg inn på din eigen instans",
-    "lead": "Lesesalen er ein klient. Du loggar inn på tenaren din, og token-et blir verande i nettlesaren din.",
-    "domainLabel": "Domenet til instansen din",
-    "domainPlaceholder": "til dømes chaos.social",
-    "domainHelp": "Skriv domenet, ikkje brukarnamnet. Du kan lima inn heile adressa om du vil.",
-    "submit": "Hald fram til instansen",
-    "working": "Registrerer …",
-    "returning": "Fullfører innlogginga …",
-    "errorDomain": "Det ser ikkje ut som eit domene. Prøv til dømes chaos.social.",
-    "errorApps": "Fekk ikkje registrert Lesesalen hos instansen. Kontroller domenet og prøv på nytt.",
-    "errorToken": "Innlogginga vart ikkje fullført. Prøv på nytt.",
-    "errorState": "Svaret frå instansen stemde ikkje med førespurnaden. Innlogginga vart avbroten av tryggleiksomsyn.",
-    "errorDenied": "Du avviste tilgangen. Ingenting vart lagra."
+  "tab": {
+    "feed": "Lesesalen",
+    "filter": "Filter",
+    "settings": "Innstillingar"
   },
-  "landing": {
-    "heading": "Berre bokinnlegga.",
-    "lead": "BookWyrm har ingen open API, men federerer. Innlegga der ber på eit terningkast, ein tittel på omtalen, eit sitat, kor langt i boka lesaren er og ei lenkje til boka — felt Mastodon ikkje har nokon stad å gjera av, og difor kastar. Lesesalen les utboksane til BookWyrm-kontoane du følgjer, hentar felta attende og set dei opp som fem ulike kort.",
-    "principleHeading": "Du ser eit innlegg fordi du følgjer kontoen",
-    "principle": "Du ser eit innlegg fordi du følgjer kontoen. Følgjelista blir lesen i nettlesaren din, og feeden er utboksane til dei av dei du følgjer som er på ein BookWyrm-instans. Ikkje noko meir.",
-    "noCrawlerHeading": "Ingen krypar",
-    "noCrawler": "Lesesalen går ikkje gjennom fediversen og samlar BookWyrm-innlegg i ein database. Tenaren hentar aldri noko på eige initiativ: kvar einaste førespurnad skjer fordi ein lesar er til stades og følgjer den kontoen. Innlegga er offentlege, men offentleg er ikkje det same som å ha samtykt til å bli aggregert og servert på nytt av ein tredjepart forfattaren aldri har høyrt om.",
-    "sampleHeading": "Slik ser dei fem korta ut",
-    "sampleNote": "Døma nedanfor er oppdikta. Ein framand som kjem hit, ser aldri kva andre les.",
-    "cta": "Logg inn med din eigen instans"
+  "shelf": {
+    "now": "På hylla no",
+    "all": "Heile hylla"
+  },
+  "state": {
+    "shelves": "{n} hyller",
+    "someShelves": "{done} av {total} hyller",
+    "fetching": "Hentar",
+    "fromCollection": "Frå samlinga",
+    "offline": "Utan nett"
+  },
+  "sweep": {
+    "progress": "Hentar hylla til {done} av {total} kontoar",
+    "note": "Éin førespurnad per konto gjev femten innlegg. Fyrste gongen tek det litt tid, fordi kvar bok må slåast opp; etterpå ligg samlinga i nettlesaren din.",
+    "missing": "{n} hyller mangla",
+    "timeout": "{host} — tidsavbrot",
+    "rateLimit": "{host} — vent {min} min",
+    "rateLimitVague": "{host} — vent om lag {min} min",
+    "failed": "{host} — svarte ikkje rett",
+    "retry": "Prøv igjen",
+    "rest": "Resten av hylla er komplett. Du kan lesa vidare mens desse ventar.",
+    "unreadable": "{n} innlegg kunne ikkje lesast"
+  },
+  "expired": {
+    "heading": "Innlogginga gjekk ut",
+    "body": "{domain} godtek ikkje innlogginga lenger. Du kan lesa vidare i det som alt ligg i nettlesaren, men ikkje svara eller henta nytt.",
+    "again": "Logg inn på nytt"
+  },
+  "queue": {
+    "waiting": "{n} svar ventar",
+    "willSend": "{text} blir sendt når du er på nett att.",
+    "edit": "Rediger",
+    "discard": "Forkast"
+  },
+  "empty": {
+    "noBookwyrm": "Hylla er tom fordi ingen du følgjer er på BookWyrm.",
+    "noBookwyrmBody": "Vi såg gjennom dei {n} kontoane du følgjer. Ingen av dei ligg på ein BookWyrm-instans, så det finst ingen bokinnlegg å hente. Lesesalen leitar ikkje utanfor følgjelista di.",
+    "findPeople": "Finn folk å følgja på BookWyrm",
+    "findPeopleHelp": "Lenkja opnar bookwyrm.social i nettlesaren. Følgjer du nokon der, kjem hylla deira hit av seg sjølv.",
+    "recheck": "Sjå gjennom følgjelista på nytt",
+    "noMatch": "Filteret gjev ingen treff.",
+    "noMatchPerson": "{who} har ikkje skrive ned nokon {kind}.",
+    "noMatchBody": "Det finst {n} innlegg i hylla. Filteret gjev ingen treff.",
+    "showAllFrom": "Vis alle {n} innlegga frå {who}",
+    "showFromEveryone": "Vis frå alle"
   },
   "feed": {
     "loading": "Hentar …",
     "empty": "Ingen bokinnlegg endå.",
     "emptyDetail": "Ingen av BookWyrm-kontoane du følgjer har lagt ut noko me kunne lesa.",
     "error": "Noko gjekk gale under henting.",
-    "retry": "Prøv på nytt",
-    "sessionExpired": "Instansen godtok ikkje token-et lenger. Du må logga inn på nytt."
-  },
-  "samling": {
-    "reading": "Les følgjelista di …",
-    "probing": "Ser etter kva instansar som køyrer BookWyrm …",
-    "sweeping": "Hentar hylla til {done} av {total} kontoar …",
-    "sweepingDetail": "Éin førespurnad per konto gjev femten innlegg. Fyrste gongen tek det litt tid, fordi kvar bok må slåast opp; etterpå ligg samlinga i nettlesaren din.",
-    "deepening": "Hentar lenger attende — {done} av {total} sider …",
-    "deepen": "Hent lenger attende",
-    "deepenHelp": "Går djupare i utboksane til dei du følgjer, ei runde på kvar konto etter tur, slik at éi svært aktiv hylle ikkje tek all plassen.",
-    "end": "Heile hylla er henta, frå alle {count} kontoane.",
-    "noShelves": "Ingen BookWyrm-kontoar i følgjelista.",
-    "noShelvesDetail": "Lesesalen hentar innlegga frå utboksane til BookWyrm-kontoane du følgjer. Følg nokon på ein BookWyrm-instans, og dei kjem til syne her."
+    "retry": "Prøv på nytt"
   },
   "kind": {
     "omtale": "Omtale",
@@ -67,54 +80,103 @@
     "lesestatus": "Lesestatus"
   },
   "status": {
-    "vil-lesa": "Vil lesa",
-    "byrja": "Byrja på",
-    "ferdig": "Ferdig med",
-    "slutta": "Slutta på",
-    "ukjend": "Lesestatus"
+    "wantToRead": "{who} vil lesa {title}",
+    "started": "{who} byrja på {title}",
+    "finished": "{who} vart ferdig med {title}",
+    "stale": "{who} har ikkje rørt {title} sidan {since}",
+    "updated": "{who} oppdaterte lesestatusen for {title}",
+    "inferredBy": "Rekna ut av Lesesalen"
   },
   "card": {
+    "ago": "{age} sidan",
     "boostedBy": "{name} boosta",
-    "showContent": "Vis meldinga",
-    "hideContent": "Skjul meldinga",
     "contentWarning": "Innhaldsåtvaring",
     "ratingOf": "{rating} av 5",
-    "noRating": "Utan terningkast",
     "page": "side {page} av {pages}",
     "pageNoTotal": "side {page}",
     "percent": "{percent} % ute i boka",
-    "byAuthor": "av {authors}",
-    "unknownBook": "Ukjend bok",
-    "openOriginal": "Opne på {domain}",
-    "openBook": "Sjå boka på BookWyrm",
-    "coverAlt": "Omslag: {title}",
-    "noCover": "Utan omslag"
+    "sourceWithPage": "{title}, s. {page}",
+    "open": "Opna {kind} frå {who}"
+  },
+  "cover": {
+    "unknown": "Ukjend bok",
+    "alt": "Omslag: {title}",
+    "holdFor": "{title} — hald inne for bokinfo",
+    "lookingUp": "{title} — slår opp omslaget",
+    "synthesised": "{title} — utan omslag i BookWyrm"
+  },
+  "spoiler": {
+    "reveal": "Trykk for å visa {n} avsnitt",
+    "hide": "Skjul"
+  },
+  "post": {
+    "readAll": "Les heile omtalen"
+  },
+  "tail": {
+    "bottom": "Nedste hylla",
+    "read": "Du har lese deg gjennom {n} innlegg, tilbake til {date}.",
+    "more": "Hent lenger attende",
+    "help": "Går djupare i utboksane, ei runde på kvar konto etter tur, slik at éi svært aktiv hylle ikkje tek all plassen.",
+    "fetching": "Hentar lenger attende …",
+    "end": "Heile hylla er henta, frå alle {count} kontoane."
+  },
+  "pull": {
+    "hint": "Dra for å hente på nytt",
+    "release": "Slepp for å hente"
   },
   "filter": {
     "heading": "Filter",
     "kind": "Type",
-    "person": "Person",
     "book": "Bok",
+    "person": "Person",
     "clear": "Nullstill",
     "clearOne": "Fjern filteret {label}",
-    "showing": "Viser {shown} av {total} innlegg",
-    "linkable": "Filtera ligg i adressa, så du kan dela eller bokmerkja utsnittet."
+    "showing": "Viser {shown} av {total}",
+    "linkable": "Filtera ligg i adressa, så du kan dela eller bokmerkja utsnittet.",
+    "apply": "Vis {n} innlegg"
+  },
+  "book": {
+    "pages": "{pages} sider",
+    "postsHere": "{n} innlegg i hylla di",
+    "filterOn": "Filtrer feeden på denne boka",
+    "open": "Opna i BookWyrm",
+    "openOn": "Opna på {host}",
+    "copy": "Kopier lenkje til boka",
+    "copied": "Lenkja er kopiert",
+    "copyFailed": "Fekk ikkje kopiert lenkja.",
+    "cannotShelve": "Lesesalen kan ikkje setja boka på di eiga hylle — det må gjerast i BookWyrm.",
+    "notHere": "Boka ligg ikkje i samlinga di."
+  },
+  "person": {
+    "shelf": "Hylla",
+    "all": "Alle",
+    "posts": "{n} bokinnlegg",
+    "books": "{n} bøker",
+    "copyLink": "Kopier lenkja",
+    "copied": "Lenkja er kopiert",
+    "copyFailed": "Fekk ikkje kopiert lenkja.",
+    "publicNote": "Denne adressa kan delast. Ho viser berre offentlege bokinnlegg, og krev ingen innlogging.",
+    "loading": "Hentar hylla …",
+    "empty": "Fann ingen bokinnlegg frå denne kontoen.",
+    "reviews": "Omtalar",
+    "quotes": "Sitat"
   },
   "composer": {
-    "reply": "Svar",
     "replyTo": "Svar til {name}",
     "placeholder": "Skriv svaret ditt …",
     "send": "Send svaret",
     "sending": "Sender …",
+    "sent": "Svaret er sendt.",
+    "queue": "Legg i kø",
+    "queued": "Svaret blir sendt når du er på nett att.",
     "cancel": "Avbryt",
-    "sent": "Svaret vart lagt ut.",
-    "error": "Fekk ikkje lagt ut svaret.",
+    "discard": "Du har skrive noko som ikkje er sendt. Vil du forlata svaret? Utkastet blir teke vare på.",
     "caveat": "Svaret blir eit vanleg Mastodon-innlegg, ikkje ein BookWyrm-kommentar. Mastodon kan ikkje laga BookWyrm-objekt.",
-    "visibility": "Synlegheit",
+    "warning": "Åtvaring",
+    "contentWarning": "Innhaldsåtvaring",
     "visibilityPublic": "Offentleg",
     "visibilityUnlisted": "Uoppført",
-    "visibilityPrivate": "Berre følgjarar",
-    "contentWarning": "Innhaldsåtvaring (valfritt)"
+    "visibilityPrivate": "Berre følgjarar"
   },
   "action": {
     "favourite": "Favoritt",
@@ -122,34 +184,93 @@
     "boost": "Boost",
     "unboost": "Fjern boost",
     "replyTo": "Svar",
-    "byPerson": "Sjå bokinnlegga til denne personen",
-    "byBook": "Filtrer på denne boka",
+    "share": "Del",
+    "sending": "Sender …",
+    "byPerson": "Opna hylla til {name}",
     "notOnYourInstance": "Instansen din har ikkje dette innlegget"
   },
-  "author": {
-    "heading": "Bokinnlegg frå {name}",
-    "lead": "Henta frå din eigen instans, med ditt eige token. Nøyaktig det Mastodon ville vist deg.",
-    "loading": "Hentar innlegg …",
-    "empty": "Fann ingen bokinnlegg frå denne kontoen.",
-    "back": "Attende"
+  "sheet": {
+    "close": "Lukk"
   },
   "settings": {
     "heading": "Innstillingar",
+    "account": "Kontoen din",
+    "loggedInAs": "Innlogga på {domain}",
+    "tokenHere": "Innlogginga ligg berre i denne nettlesaren.",
     "language": "Språk",
     "languageNn": "Nynorsk",
     "languageEn": "English",
-    "account": "Konto",
-    "loggedInAs": "Innlogga på {domain}",
-    "ephemeral": "Logg ut når eg lukkar fana",
-    "ephemeralHelp": "For maskiner du deler med andre. Token-et blir då liggjande i sessionStorage og forsvinn når fana blir lukka.",
-    "logOut": "Logg ut",
-    "loggingOut": "Loggar ut …",
-    "logOutHelp": "Token-et blir fyrst trekt attende hos instansen din, deretter sletta frå nettlesaren.",
-    "collection": "Samlinga",
+    "collection": "Samlinga i nettlesaren",
+    "collectionSize": "{posts} innlegg, {books} bøker",
     "collectionHelp": "Innlegga me har henta ligg i nettlesaren din, slik at me ikkje må henta alt på nytt kvar gong. Ingenting av dette ligg på tenaren vår.",
     "clearCollection": "Tøm samlinga",
-    "clearingCollection": "Tømer …",
-    "collectionCleared": "Samlinga er tømd. Ho blir bygd opp att neste gong du opnar lesesalen."
+    "clearCollectionNote": "Hentar alt på nytt",
+    "collectionCleared": "Samlinga er tømd.",
+    "reading": "Lesing",
+    "cwOpen": "Vis åtvaringar utpakka",
+    "percent": "Vis sidetal som prosent",
+    "ephemeral": "Logg ut når eg lukkar fana",
+    "ephemeralHelp": "For maskiner du deler med andre. Samlinga blir då ikkje lagra på disk.",
+    "logOut": "Logg ut",
+    "loggingOut": "Loggar ut …",
+    "logOutHelp": "Utlogging trekkjer fyrst innlogginga attende hos instansen din, og slettar deretter samlinga frå denne nettlesaren."
+  },
+  "login": {
+    "heading": "Kva instans les du frå?",
+    "lead": "Lesesalen har ingen eigne kontoar. Du loggar inn på din eigen instans, og han fortel oss kven du følgjer.",
+    "domainLabel": "Instans eller handle",
+    "domainPlaceholder": "til dømes chaos.social",
+    "domainHelp": "Skriv heile handlet, eller berre domenet — begge delar gjer same nytten.",
+    "recent": "Nyleg brukt",
+    "notProbed": "Ikkje kontakta enno",
+    "submit": "Hald fram",
+    "continueTo": "Hald fram til {domain}",
+    "working": "Registrerer …",
+    "passwordThere": "Passordet ditt blir skrive inn hos {domain}, aldri her.",
+    "didYouMean": "Meinte du {domain}?",
+    "consentHeading": "Du blir sendt til {domain}",
+    "consentLead": "Der godkjenner du sjølv. Kjem du attende utan å ha godkjent, skjer ingenting.",
+    "asksFor": "Lesesalen ber om",
+    "askFollowsTitle": "Å lesa kven du følgjer",
+    "askFollowsWhy": "Så vi veit kva hyller som finst. Lista blir lesen i nettlesaren din.",
+    "askWriteTitle": "Å skriva svar, favorittar og boost",
+    "askWriteWhy": "Berre når du trykkjer sjølv. Lesesalen postar aldri av eige tiltak.",
+    "cannot": "Lesesalen kan ikkje",
+    "cannotDm": "Sjå direktemeldingane dine",
+    "cannotFollow": "Følgja eller avfølgja nokon for deg",
+    "cannotShelve": "Setja bøker på hylla di i BookWyrm",
+    "open": "Opna {domain}",
+    "tokenStays": "Innlogginga blir liggjande i denne nettlesaren. Du kan trekkja henne attende frå {domain} når som helst.",
+    "returning": "Fullfører innlogginga …",
+    "errorDomain": "Det ser ikkje ut som eit domene.",
+    "errorNotAnInstance": "Vi fann ingen fediversinstans på dette domenet.",
+    "errorApps": "Fekk ikkje registrert Lesesalen hos instansen. Kontroller domenet og prøv på nytt.",
+    "errorToken": "Innlogginga vart ikkje fullført. Prøv på nytt.",
+    "errorState": "Svaret frå instansen stemde ikkje med førespurnaden. Innlogginga vart avbroten av tryggleiksomsyn.",
+    "errorDenied": "Du avviste tilgangen. Ingenting vart lagra."
+  },
+  "landing": {
+    "heading": "Berre bokinnlegga.",
+    "lead": "BookWyrm har ingen open API, men federerer. Lesesalen les utboksane til BookWyrm-kontoane du følgjer, hentar felta Mastodon kastar, og set dei opp som fem ulike kort.",
+    "principleHeading": "Du ser eit innlegg fordi du følgjer kontoen",
+    "principle": "Følgjelista blir lesen i nettlesaren din, og feeden er utboksane til dei av dei du følgjer som er på ein BookWyrm-instans. Ikkje noko meir.",
+    "noCrawlerHeading": "Ingen krypar",
+    "noCrawler": "Tenaren hentar aldri noko på eige initiativ: kvar einaste førespurnad skjer fordi ein lesar er til stades og følgjer den kontoen.",
+    "sampleHeading": "Slik ser korta ut",
+    "sampleNote": "Døma nedanfor er oppdikta. Ein framand som kjem hit, ser aldri kva andre les.",
+    "cta": "Logg inn med din eigen instans"
+  },
+  "error": {
+    "generic": "Noko gjekk gale.",
+    "forbidden": "Instansen din tillèt ikkje dette.",
+    "gone": "Innlegget finst ikkje lenger.",
+    "goneDetail": "Det er teke bort frå instansen det låg på.",
+    "writeFailed": "Det gjekk ikkje. Prøv igjen.",
+    "notFound": "Fann ikkje sida.",
+    "notFoundDetail": "Adressa finst ikkje i Lesesalen.",
+    "offline": "Får ikkje kontakt. Kontroller nettsambandet.",
+    "unreachable": "Fekk ikkje henta innlegget.",
+    "unreachableDetail": "Instansen svarte ikkje. Innlegget kan framleis finnast — prøv igjen om litt."
   },
   "about": {
     "title": "Om Lesesalen",
@@ -238,10 +359,13 @@
     "rights": "Det finst ingen eksportfunksjon på tenarsida, fordi det ikkje er noko der å eksportera. Samlinga som ligg i nettlesaren din, kan du tøma når som helst under Innstillingar. Vil du fjerna innlogginga, loggar du ut: token-et blir fyrst trekt attende hos instansen din, deretter sletta frå nettlesaren, og samlinga blir sletta med han.",
     "updated": "Sist endra {date}."
   },
-  "error": {
-    "generic": "Noko gjekk gale.",
-    "notFound": "Fann ikkje sida.",
-    "notFoundDetail": "Adressa finst ikkje i Lesesalen.",
-    "offline": "Får ikkje kontakt. Kontroller nettsambandet."
+  "age": {
+    "now": "no",
+    "minute": "{n} min",
+    "hour": "{n} t",
+    "day": "{n} d",
+    "week": "{n} v",
+    "month": "{n} md",
+    "year": "{n} år"
   }
 }

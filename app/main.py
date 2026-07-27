@@ -47,8 +47,23 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-SPA_ROUTES = {"/", "/om", "/personvern", "/attende", "/innstillingar"}
-SPA_PREFIXES = ("/lesar/",)
+# The client's own route table (design 5g). Anything not listed here is a 404
+# rather than a shell, so a typo does not silently render an empty app.
+#
+# `/attende` is the OAuth redirect URI registered with instances people have
+# already logged in through; it cannot be dropped without breaking them, so it
+# stays alongside the newer `/logg-inn/attende`. `/lesar/` is the old person
+# route, kept for links already shared — the client redirects it to `/@`.
+SPA_ROUTES = {
+    "/",
+    "/om",
+    "/personvern",
+    "/attende",
+    "/innstillingar",
+    "/logg-inn",
+    "/logg-inn/attende",
+}
+SPA_PREFIXES = ("/lesar/", "/innlegg/", "/bok/", "/@")
 
 # ── security headers ─────────────────────────────────────────────────────────
 #
@@ -173,6 +188,12 @@ async def api_instansar(request: Request) -> Response:
                 domain: {
                     "bookwyrm": record["is_bookwyrm"],
                     "programvare": record["software_name"],
+                    # The login screen names the software it found before asking
+                    # anyone to leave the app ("Mastodon 4.3"). It is the
+                    # instance's own public nodeinfo, about the host and not
+                    # about a person, and the same probe already answers for
+                    # everybody who asks.
+                    "versjon": record.get("software_version"),
                 }
                 for domain, record in described.items()
             }
