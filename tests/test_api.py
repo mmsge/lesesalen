@@ -25,7 +25,161 @@ def client(tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch):
 def test_healthz(client: TestClient) -> None:
     response = client.get("/healthz")
     assert response.status_code == 200
-    assert response.text == "ok"
+    assert response.headers["content-type"].startswith("text/plain")
+    assert response.headers["cache-control"] == "no-store"
+    # Exactly two bytes, no trailing newline: docker-compose.yml byte-compares
+    # this (`.read() == b'ok'`), so a newline breaks the healthcheck silently.
+    assert response.content == b"ok"
+
+
+def test_healthz_touches_no_dependency(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Liveness must not consult the database.
+
+    The tempting implementation is `return health()`; with a container
+    healthcheck pointed at /healthz that restarts lesesalen every time a
+    dependency is unhappy. Break the dependency and /healthz must not notice.
+    """
+    def explode() -> int:
+        raise RuntimeError("db is down")
+
+    monkeypatch.setattr(db, "row_count", explode)
+    assert client.get("/healthz").content == b"ok"
+
+
+def test_version_reports_the_running_image(client: TestClient) -> None:
+    response = client.get("/version")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/json")
+    assert response.headers["cache-control"] == "no-store"
+    body = response.json()
+    assert body["service"] == "lesesalen"
+    assert set(body) == {
+        "service", "commit", "commit_short", "branch", "commit_time",
+        "repo", "dirty", "built_at", "source",
+    }
+    assert body["source"] in {"build-info", "unknown"}
+    if body["source"] == "unknown":
+        assert body["commit"] is None
+    else:
+        assert len(body["commit"]) == 40  # the full sha — short ones collide
+
+
+def test_version_without_build_info_says_unknown(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An absent build-info.json is not an error, and never a guess."""
+    monkeypatch.setattr(main, "_ROOT", tmp_path)
+    info = main._build_info()
+    assert info["source"] == "unknown"
+    assert info["service"] == "lesesalen"
+    assert all(
+        info[key] is None
+        for key in ("commit", "commit_short", "branch", "commit_time", "repo",
+                    "dirty", "built_at")
+    )
+
+
+def test_version_drops_unknown_keys_from_build_info(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """/version is public, so the response shape is the allowlist — not whatever
+    happens to be in the file."""
+    import json
+
+    (tmp_path / "build-info.json").write_text(
+        json.dumps({"commit_short": "abc1234", "SECRET_TOKEN": "hunter2"})
+    )
+    monkeypatch.setattr(main, "_ROOT", tmp_path)
+    info = main._build_info()
+    assert info["commit_short"] == "abc1234"
+    assert info["source"] == "build-info"
+    assert "SECRET_TOKEN" not in info
+
+
+def test_health_reports_substantive_checks(client: TestClient) -> None:
+    response = client.get("/health")
+    # degraded is a 200 on purpose — only a real failure is 503.
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/json")
+    assert response.headers["cache-control"] == "no-store"
+    body = response.json()
+    assert body["service"] == "lesesalen"
+    assert body["status"] in {"ok", "degraded"}
+    assert isinstance(body["uptime_seconds"], int)
+    assert body["started_at"] and body["checked_at"]
+
+    by_name = {check["name"]: check for check in body["checks"]}
+    assert set(by_name) <= set(main.HEALTH_CHECKS)
+    # A real query with a row count, not a ping.
+    assert by_name["database"]["status"] == "ok"
+    assert by_name["database"]["detail"].endswith("rows")
+    assert isinstance(by_name["database"]["latency_ms"], (int, float))
+    assert by_name["cache"]["detail"].endswith("entries")
+
+
+def test_health_leaks_nothing_about_the_box(client: TestClient) -> None:
+    """The redaction allowlist (naustet-server ADR 0022): /health is public.
+
+    Paths, ports, hostnames, env names and exception text are all forbidden —
+    and `str(exc)` is how they normally get in.
+    """
+    response = client.get("/health")
+    for forbidden in ("/data", "/app", "/srv", "172.18.0.1", "127.0.0.1",
+                      "8080", "4023", "LESESALEN_", "sqlite", "Traceback"):
+        assert forbidden not in response.text
+
+    for check in response.json()["checks"]:
+        detail = check.get("detail")
+        if detail is None:
+            continue
+        assert detail in main.DETAIL or detail.split()[-1] in {"rows", "entries"}
+
+
+def test_health_degrades_without_restarting_the_container(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A missing cover directory is degraded, and degraded is 200.
+
+    If it were 503 and anyone pointed a container healthcheck at /health, this
+    would restart lesesalen forever.
+    """
+    monkeypatch.setattr(main.config, "COVER_DIR", pathlib.Path("/nonexistent/covers"))
+    response = client.get("/health")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "degraded"
+    storage = next(c for c in body["checks"] if c["name"] == "storage")
+    assert storage["status"] == "degraded"
+    assert storage["detail"] == "unavailable"
+
+
+def test_health_is_503_only_on_a_real_failure(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def explode() -> int:
+        raise RuntimeError("no such table: book — /data/lesesalen.db")
+
+    monkeypatch.setattr(db, "row_count", explode)
+    response = client.get("/health")
+    assert response.status_code == 503
+    body = response.json()
+    assert body["status"] == "error"
+    database = next(c for c in body["checks"] if c["name"] == "database")
+    assert database["detail"] == "unavailable"
+    # The exception named a table and a database path. Neither may appear.
+    assert "lesesalen.db" not in response.text
+    assert "no such table" not in response.text
+
+
+def test_ops_endpoints_beat_the_spa_catch_all(client: TestClient) -> None:
+    """`/{path:path}` answers unknown routes, and an HTML 200 on /version reads
+    as 'endpoint missing' to the box's probe rather than as a failure. Route
+    registration order is the only thing preventing that, so assert it."""
+    for path in ("/version", "/health"):
+        assert client.get(path).headers["content-type"].startswith("application/json")
+    assert client.get("/healthz").headers["content-type"].startswith("text/plain")
 
 
 def test_security_headers_are_present_and_strict(client: TestClient) -> None:

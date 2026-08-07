@@ -21,5 +21,10 @@ Disallow: /@
 Disallow: /innlegg/
 Disallow: /bok/
 Disallow: /logg-inn
+# The box's ops endpoints: useful to agents and monitoring, not content for a
+# search index (naustet-server ADR 0022). /healthz is deliberately left out —
+# it must never be gated, redirected or discouraged.
+Disallow: /health
+Disallow: /version
 
 Sitemap: https://lesesalen.msge.no/sitemap.xml

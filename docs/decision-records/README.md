@@ -60,3 +60,4 @@ decision or an agent made it without input**:
 | [0012](0012-a-page-number-needs-positionmode-pg.md) | A page number is a page number only when `positionMode` says `PG` | Accepted |
 | [0013](0013-nobody-ever-gave-up-on-a-book.md) | Lesesalen never says a reader gave up on a book | Accepted |
 | [0014](0014-a-book-looks-the-same-everywhere.md) | A book's cloth and silhouette are a pure function of its work id | Accepted |
+| [0015](0015-health-names-no-upstream-instances.md) | `/health` names no upstream instance | Accepted |

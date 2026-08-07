@@ -176,8 +176,15 @@ make client-dev    # Vite dev server on :5173, proxying /api to :8080
 python -m uvicorn app.main:app --port 8080 --no-access-log   # the API
 
 make client        # rebuild client/dist — commit the result (ADR 0001)
-make verify        # page dates + docker build + boot + healthz
+make verify        # page dates + build info + docker build + boot + ops endpoints
 ```
+
+Three unauthenticated ops endpoints answer for the box (hetzner-server ADR 0022):
+`/healthz` (is the process alive — dependency-free, body exactly `ok`), `/version`
+(which commit the *image* was built from, so a `git pull` with no rebuild becomes
+visible) and `/health` (a redacted, public readiness report: SQLite row count,
+data-directory writability, whether the client bundle is present, and enrichment
+cache occupancy). `degraded` is a 200; only `error` is a 503.
 
 The Svelte client is **built in CI and committed** to `client/dist`; the box
 never runs Node. CI rebuilds it and fails if the committed bundle is stale, so
