@@ -6,6 +6,10 @@ __pycache__/
 .pytest_cache/
 # Regenerated at deploy by scripts/generate-page-dates.sh
 page-dates.json
+# Regenerated at deploy by scripts/generate-build-info.sh, BEFORE the image build
+# (naustet-server ADR 0022). Never commit it: a committed copy pins a stale SHA
+# into the repo and /version then lies about which code is actually running.
+build-info.json
 
 # Client build inputs. client/dist is deliberately NOT ignored — it is committed
 # so the box never has to run Node (ADR 0001).

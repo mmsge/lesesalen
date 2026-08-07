@@ -109,6 +109,18 @@ def _write(sql: str, params: Iterable[Any] | Mapping[str, Any] = ()) -> None:
         conn.commit()
 
 
+def row_count() -> int:
+    """Total stored rows, for `/health` (naustet-server ADR 0022).
+
+    A real query rather than a ping: it proves the file is open, the schema is
+    there, and SQLite can actually read it. Deliberately one bare cardinal and
+    not a per-table breakdown — a public health response gets counts, never a
+    description of the schema.
+    """
+    rows = _query("SELECT (SELECT count(*) FROM book) + (SELECT count(*) FROM instance) AS n")
+    return int(rows[0]["n"])
+
+
 # ── instances ────────────────────────────────────────────────────────────────
 
 def get_instance(domain: str) -> dict[str, Any] | None:

@@ -15,7 +15,11 @@ model), and the box convention keeps service config out of central ingress.
 from __future__ import annotations
 
 import contextlib
+import json
 import mimetypes
+import os
+import pathlib
+import time
 from datetime import datetime, timezone
 from email.utils import format_datetime, parsedate_to_datetime
 from typing import Any
@@ -142,11 +146,195 @@ async def security_and_limits(request: Request, call_next):
     return response
 
 
-# ── box requirements ─────────────────────────────────────────────────────────
+# ── box requirements: /healthz, /version, /health ────────────────────────────
+#
+# Three questions, three fixed paths, on every service on the box: is the process
+# alive, which commit is actually running, and is it working. See naustet-server
+# ADR 0022 and its docs/health-and-version-contract.md.
+#
+# These are registered HERE, above the API and far above the `/{path:path}` SPA
+# catch-all at the bottom of this file. Order is the whole point: the catch-all
+# answers unknown single-segment routes, and if it got `/version` first the box's
+# probe would read an HTML body — which it scores as "endpoint missing", not as a
+# failure. There is nothing to notice when that happens, so keep them up here.
+#
+# All three are public and none is gated: the rate limiter above only meters
+# /api/, which is what keeps a monitoring poll from ever being throttled.
+
+# Site created/modified dates ride in page-dates.json; this is its sibling for
+# the *image*. Both live at the repo/image root, so parent.parent from app/.
+_ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+_STARTED = time.time()
+# no-store on all three: caching the endpoint you use to *detect* a stale deploy
+# defeats the endpoint.
+NO_STORE = {"Cache-Control": "no-store"}
+
+_EMPTY_BUILD_INFO: dict[str, Any] = {
+    "service": "lesesalen", "commit": None, "commit_short": None, "branch": None,
+    "commit_time": None, "repo": None, "dirty": None, "built_at": None,
+    "source": "unknown",
+}
+
+
+def _build_info() -> dict[str, Any]:
+    """This image's git identity, written by scripts/generate-build-info.sh on the
+    checkout at deploy — the image has no .git — and COPY'd in last.
+
+    An absent file is not an error: report source "unknown" with null fields and
+    never guess. A build-time constant compiled into the code would look right
+    and go stale, which is exactly the failure /version exists to expose.
+
+    Unknown keys are dropped rather than merged: the file is generated here, but
+    /version is public, so the response shape is the allowlist and not whatever
+    happens to be on disk.
+    """
+    try:
+        loaded = json.loads((_ROOT / "build-info.json").read_text())
+    except (OSError, ValueError):
+        return dict(_EMPTY_BUILD_INFO)
+    if not isinstance(loaded, dict):
+        return dict(_EMPTY_BUILD_INFO)
+    return {
+        **_EMPTY_BUILD_INFO,
+        **{k: v for k, v in loaded.items() if k in _EMPTY_BUILD_INFO},
+        "service": "lesesalen",
+        "source": "build-info",
+    }
+
+
+BUILD_INFO = _build_info()
+
 
 @app.api_route("/healthz", methods=["GET", "HEAD"], response_class=PlainTextResponse)
-async def healthz() -> str:
-    return "ok"
+async def healthz() -> Response:
+    """Liveness only. No database, no upstream, no disk — deliberately.
+
+    docker-compose.yml restarts the container on this, so the tempting version
+    (`return health()`) would restart lesesalen every time a BookWyrm instance is
+    slow. /healthz says the process is up; /health says it is working.
+
+    The body is exactly "ok", two bytes with no trailing newline: the compose
+    healthcheck byte-compares it (`.read() == b'ok'`) and a newline breaks it
+    silently.
+    """
+    return PlainTextResponse("ok", headers=NO_STORE)
+
+
+@app.api_route("/version", methods=["GET", "HEAD"])
+async def version() -> Response:
+    return JSONResponse(BUILD_INFO, headers=NO_STORE)
+
+
+# The check names this service publishes — a closed vocabulary, as the contract
+# requires, so nothing incidental can leak in through a name.
+#
+#   database  SQLite: instance nodeinfo + bibliographic rows
+#   storage   the data directory covers are written into
+#   render    the built client bundle the SPA shell is stamped from (ADR 0001)
+#   cache     the in-memory enrichment cache (ADR 0005)
+#
+# There is deliberately no `upstream:` check. Lesesalen's upstreams are the
+# BookWyrm instances a *reader* follows — arbitrary, unknown until someone asks,
+# and naming the ones we have talked to would publish who has been reading here
+# (ADR 0003). The cache entry count is the honest proxy: it moves when fetches
+# succeed, and it names nobody.
+HEALTH_CHECKS = ("database", "storage", "render", "cache")
+
+# The permitted `detail` vocabulary. Anything outside it — plus plain counts like
+# "1240 rows" — does not belong in a public health response, and str(exc) is the
+# usual way it gets in: it carries paths, DSNs and dependency versions.
+DETAIL = ("connection refused", "timeout", "auth failed", "not found",
+          "parse error", "disk full", "unavailable")
+
+
+def _check_database() -> dict[str, Any]:
+    started = time.monotonic()
+    try:
+        rows = db.row_count()
+    except Exception:
+        # A classified word only. Never str(exc): a sqlite3 error message quotes
+        # the database file's path.
+        return {"name": "database", "status": "error", "detail": "unavailable"}
+    return {
+        "name": "database",
+        "status": "ok",
+        "latency_ms": round((time.monotonic() - started) * 1000, 1),
+        "detail": f"reachable; {rows} rows",
+    }
+
+
+def _check_storage() -> dict[str, Any]:
+    """Can covers still be written? A boolean, never the path (that is /data in
+    the container and ./data on a laptop — either way it is the box's interior).
+
+    Degraded rather than error: with the directory gone, cached covers stop
+    arriving but every card, review and rating still renders.
+    """
+    try:
+        writable = config.COVER_DIR.is_dir() and os.access(config.COVER_DIR, os.W_OK)
+    except OSError:
+        writable = False
+    if writable:
+        return {"name": "storage", "status": "ok"}
+    return {"name": "storage", "status": "degraded", "detail": "unavailable"}
+
+
+def _check_render() -> dict[str, Any]:
+    """Is the built client bundle in the image?
+
+    Worth a check of its own because of ADR 0001: client/dist is built in CI and
+    committed, never built on the box, so the way it goes missing is a selective
+    Docker COPY or a stale commit — and the app is explicitly built to keep
+    serving the API without it. That failure is invisible to /healthz: the
+    process is perfectly alive, it just answers every page with a 503.
+    """
+    available = _shell.available if _shell is not None else shell.INDEX.is_file()
+    if available:
+        return {"name": "render", "status": "ok"}
+    return {"name": "render", "status": "degraded", "detail": "not found"}
+
+
+def _check_cache() -> dict[str, Any]:
+    """Enrichment cache occupancy — a cardinal, never a key.
+
+    The keys are the URIs of posts people are reading and they never leave the
+    process (ADR 0003/0005); the count says how warm the cache is and names
+    nobody. Empty is not a fault: a restart empties it by design.
+    """
+    try:
+        entries = int(enrich.cache_stats()["entries"])
+    except Exception:
+        return {"name": "cache", "status": "degraded", "detail": "unavailable"}
+    return {"name": "cache", "status": "ok", "detail": f"{entries} entries"}
+
+
+@app.api_route("/health", methods=["GET", "HEAD"])
+async def health() -> Response:
+    """Readiness and diagnostics — public, so redacted by allowlist.
+
+    Nothing goes in here that is not on the contract's allowlist: no paths, no
+    hostnames, no ports, no env names, no exception text, no dependency
+    versions. Ages, counts and a word from DETAIL, and nothing else.
+    """
+    checks = [_check_database(), _check_storage(), _check_render(), _check_cache()]
+    status = ("error" if any(c["status"] == "error" for c in checks)
+              else "degraded" if any(c["status"] == "degraded" for c in checks)
+              else "ok")
+    body = {
+        "status": status,
+        "service": "lesesalen",
+        "commit_short": BUILD_INFO["commit_short"],
+        "started_at": datetime.fromtimestamp(_STARTED, timezone.utc).isoformat(timespec="seconds"),
+        "uptime_seconds": int(time.time() - _STARTED),
+        "checked_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "checks": checks,
+    }
+    # degraded stays 200; only a real failure is 503. If degraded were 503 and
+    # anyone pointed a container healthcheck at /health, a missing cover
+    # directory would restart lesesalen forever.
+    return JSONResponse(body, status_code=503 if status == "error" else 200,
+                        headers=NO_STORE)
 
 
 @app.api_route("/robots.txt", methods=["GET", "HEAD"])

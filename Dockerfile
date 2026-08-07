@@ -31,6 +31,18 @@ ENV LESESALEN_DATA_DIR=/data
 RUN mkdir -p /data && chown -R lesesalen:lesesalen /data /app
 USER lesesalen
 
+# This image's git identity, written by scripts/generate-build-info.sh on the
+# checkout at deploy and served at /version (naustet-server ADR 0022). It sits at
+# the image root, next to page-dates.json, because that is where app/shell.py's
+# `parent.parent` already looks.
+#
+# THE LAST COPY, deliberately — and after the chown too: `built_at` changes on
+# every single deploy, so anything below this line would be rebuilt every deploy.
+# The glob makes it a no-op when the file is absent, so a bare `docker build`
+# still works; /version then reports source "unknown" rather than guessing.
+# (Ownership stays root:root at mode 0644, which the unprivileged user can read.)
+COPY build-info.jso[n] ./
+
 EXPOSE 8080
 # --no-access-log is load-bearing, not tidiness: /api/berik receives the URIs of
 # the posts someone is reading, and we promise not to log them (ADR 0003).

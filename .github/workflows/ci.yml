@@ -41,6 +41,12 @@ jobs:
           cat page-dates.json
           python -c "import json; d=json.load(open('page-dates.json')); assert d['created'] and d['modified']"
 
+      - name: Generate build info
+        run: |
+          ./scripts/generate-build-info.sh
+          cat build-info.json
+          python -c "import json; d=json.load(open('build-info.json')); assert len(d['commit'])==40"
+
       - name: Tests
         run: python -m pytest -q
 
@@ -50,6 +56,17 @@ jobs:
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8080/healthz >/dev/null 2>&1 && break; sleep 1; done
 
           curl -fsS http://127.0.0.1:8080/healthz | grep -qx ok
+          # The ops contract (hetzner-server ADR 0022): /version must be JSON, not
+          # the SPA shell — an HTML 200 here reads as "endpoint missing" to the
+          # box's probe, which is a silent failure rather than a loud one.
+          curl -fsS http://127.0.0.1:8080/version | grep -q '"source": *"build-info"'
+          curl -fsSI http://127.0.0.1:8080/version | grep -qi 'content-type: application/json'
+          curl -fsSI http://127.0.0.1:8080/version | grep -qi 'cache-control: no-store'
+          # degraded is a 200 on purpose, so -f is the right check: only a real
+          # failure (503) should fail CI.
+          curl -fsS http://127.0.0.1:8080/health | grep -q '"checks"'
+          # Redaction: /health is public. Nothing about the box's interior in it.
+          ! curl -fsS http://127.0.0.1:8080/health | grep -qE '/data|/app|127\.0\.0\.1|172\.18\.0\.1|8080|LESESALEN_'
           curl -fsS http://127.0.0.1:8080/robots.txt | grep -q 'Sitemap: https://lesesalen.msge.no/sitemap.xml'
           curl -fsS http://127.0.0.1:8080/sitemap.xml | grep -q '<loc>https://lesesalen.msge.no/</loc>'
           ! curl -fsS http://127.0.0.1:8080/sitemap.xml | grep -q '__LASTMOD__'
@@ -115,6 +132,11 @@ jobs:
       - name: Generate page dates
         run: ./scripts/generate-page-dates.sh
 
+      # BEFORE the build, exactly as `make deploy` does it — the SHA has to be
+      # baked into the image.
+      - name: Generate build info
+        run: ./scripts/generate-build-info.sh
+
       - name: Build the image the box will build
         run: docker build -t lesesalen:ci .
 
@@ -129,5 +151,12 @@ jobs:
           curl -fsS http://127.0.0.1:8080/sitemap.xml | grep -q '<loc>'
           # The client bundle has to be in the image too.
           curl -fsS http://127.0.0.1:8080/ | grep -q '/assets/'
+          # build-info.json has to be in the image as well, and this is the only
+          # place that can prove it: a .dockerignore or a dropped COPY makes the
+          # optional-copy glob a silent no-op, and /version then reports
+          # source "unknown" forever with nothing logged anywhere.
+          curl -fsS http://127.0.0.1:8080/version | grep -q '"source": *"build-info"'
+          test "$(curl -fsS http://127.0.0.1:8080/version | python3 -c 'import json,sys; print(json.load(sys.stdin)["commit"])')" = "$(git rev-parse HEAD)"
+          curl -fsS http://127.0.0.1:8080/health | grep -q '"checks"'
           docker logs lesesalen-ci
           docker rm -f lesesalen-ci

@@ -98,7 +98,7 @@ above it; sheets become panels; the review cover grows 132 → 168px.
 ## Common operations
 
 ```sh
-make verify        # page dates + build + boot + healthz
+make verify        # page dates + build info + build + boot + healthz/version/health
 make test          # pytest
 make client        # rebuild client/dist (commit the result)
 make client-dev    # Vite dev server on :5173, proxying /api to :8080
@@ -135,9 +135,24 @@ ingress.
 - The base image is `python:3.12-slim`, not `-alpine`: `nh3` (Rust) and `Pillow`
   (C) have patchy musl wheel coverage, and a source build would drag a Rust
   toolchain onto the box.
-- Expose an unauthenticated `GET /healthz` (returns `200 ok`) **and** keep the
-  Compose `healthcheck:` that probes it. The probe dials `127.0.0.1`, never
-  `localhost` (hetzner-server ADR 0010).
+- Expose the box's three unauthenticated ops endpoints — `GET /healthz`,
+  `GET /version`, `GET /health` (hetzner-server ADR 0022) — and keep the Compose
+  `healthcheck:` pointed at **`/healthz`**, never `/health`. The probe dials
+  `127.0.0.1`, never `localhost` (hetzner-server ADR 0010).
+  - `/healthz` returns exactly `ok` (two bytes, no newline — the healthcheck
+    byte-compares it) and stays **dependency-free**: `return health()` would
+    restart the container every time a BookWyrm instance is slow.
+  - `/version` reports the *image's* git identity from the gitignored
+    `build-info.json`, written by `scripts/generate-build-info.sh` on the
+    checkout at `make deploy` **before** the build and `COPY`'d in **last** —
+    `built_at` changes every deploy, so an earlier `COPY` would bust the
+    `pip install` layer. Absent file ⇒ `source: "unknown"`, never a guess.
+  - `/health` is **public**, so it is redacted by allowlist: ages, counts and a
+    word from `main.DETAIL`, never a path, port, hostname, env name or
+    `str(exc)`. `degraded` is a 200; only `error` is 503.
+  - All three are registered above the `/{path:path}` SPA catch-all in
+    `app/main.py`. Below it they would answer 200 with HTML, which the box's
+    probe scores as *missing* rather than as broken.
 - Serve `robots.txt` + `sitemap.xml` at the root, baked into the image — a
   selective `COPY` that omits them ships 404s.
 - Every HTML page carries **git-derived creation/modification metadata** (the
