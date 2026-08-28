@@ -192,7 +192,7 @@ which would defeat the CSP.
 
 Lives at `/srv/lesesalen`, Docker Compose, bound to `172.18.0.1:4023`, behind
 central Caddy. Routing and TLS are **not** managed here — they live in
-[`mmsge/hetzner-server`](https://github.com/mmsge/hetzner-server). See
+[`mmsge/naustet-server`](https://github.com/mmsge/naustet-server). See
 `CLAUDE.md` for the full box context.
 
 ```sh
@@ -204,4 +204,4 @@ cd /srv/lesesalen && make deploy
 AGPL-3.0 (`SPDX-License-Identifier: AGPL-3.0-or-later`) — see `LICENSE`. Keep the
 `NOTICE` (it carries the AI-authorship disclosure). Built with AI —
 [Laga med KI](https://msge.no/ki). Box-wide policy:
-`hetzner-server/docs/licensing/` + ADR 0018.
+`naustet-server/docs/licensing/` + ADR 0018.

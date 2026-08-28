@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY client/dist ./client/dist
 
 # robots.txt + sitemap.xml must be in the image — a selective COPY that omits them
-# ships 404s (hetzner-server/NEW-SERVICE.md).
+# ships 404s (naustet-server/NEW-SERVICE.md).
 COPY robots.txt sitemap.xml ./
 COPY app ./app
 

@@ -117,7 +117,7 @@ make remote-deploy # from a laptop, over SSH
 | Deploy | `cd /srv/lesesalen && make deploy` |
 
 **Central ingress — do NOT manage TLS/routing here.** Caddy (TLS + reverse proxy
-for every domain) is central in **`github.com/mmsge/hetzner-server`**. Do not add a
+for every domain) is central in **`github.com/mmsge/naustet-server`**. Do not add a
 Caddy service to this repo. To change routing or the domain, edit that repo.
 
 The security headers *are* set here rather than in Caddy, and that is
@@ -137,7 +137,7 @@ ingress.
   toolchain onto the box.
 - Expose an unauthenticated `GET /healthz` (returns `200 ok`) **and** keep the
   Compose `healthcheck:` that probes it. The probe dials `127.0.0.1`, never
-  `localhost` (hetzner-server ADR 0010).
+  `localhost` (naustet-server ADR 0010).
 - Serve `robots.txt` + `sitemap.xml` at the root, baked into the image — a
   selective `COPY` that omits them ships 404s.
 - Every HTML page carries **git-derived creation/modification metadata** (the
@@ -149,12 +149,12 @@ ingress.
   `app/shell.py` injects it into the built `index.html` at request time. HTTP
   `Last-Modified` (+ 304) is served on the shell because the shell *is* static —
   all feed content is rendered client-side from the reader's own instance, so no
-  live data ever sits behind that validator. See hetzner-server ADR 0015.
+  live data ever sits behind that validator. See naustet-server ADR 0015.
 
 **Live data & full picture:** the box exposes a **Hetzner MCP at
 `https://mcp.msge.no/mcp`** (bearer token). Call `get_service("lesesalen")`,
 `list_services`, `next_free_port`, `port_map`, `conventions`, or `scaffold_service`
-for authoritative, live answers. The static reference lives in `mmsge/hetzner-server`
+for authoritative, live answers. The static reference lives in `mmsge/naustet-server`
 (`Caddyfile` = the port map; `services/lesesalen-msge-no.md` = this service's doc).
 
 ## Decision records
@@ -173,7 +173,7 @@ Skip routine changes with no trap and no alternative worth remembering. Records 
 immutable once accepted; to change one, add a new record and mark the old
 `Superseded by NNNN`. The **Contributors** field must make clear whether Markus was
 *asked and answered* (name him only then) or an **agent decided on its own** (name
-the agent). Decisions about central ingress/routing/the box go in `hetzner-server`;
+the agent). Decisions about central ingress/routing/the box go in `naustet-server`;
 decisions about this service go here. See `docs/decision-records/README.md`.
 
 ## Language
