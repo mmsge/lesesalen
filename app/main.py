@@ -114,7 +114,7 @@ SECURITY_HEADERS = {
     "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
     # No `includeSubDomains`: this host is one label under msge.no and the
     # directive would commit every sibling subdomain on the box at once. That is
-    # a decision for hetzner-server to make for the apex, not for a tenant to
+    # a decision for naustet-server to make for the apex, not for a tenant to
     # make on its behalf. No `preload` either — it is effectively irreversible.
     "Strict-Transport-Security": "max-age=31536000",
 }

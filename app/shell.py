@@ -4,7 +4,7 @@ The client is a single-page app, so there is one built `index.html`. Rather than
 letting it ship bare, the server injects into its `<head>` at request time:
 
 * the git-derived created/modified metadata every site on the box carries
-  (hetzner-server ADR 0015) — meta date/last-modified, article:published_time /
+  (naustet-server ADR 0015) — meta date/last-modified, article:published_time /
   article:modified_time, and the JSON-LD WebSite node;
 * per-route title, description, canonical and Open Graph tags for the three
   public pages, so an unfurl or a crawler gets something true rather than the

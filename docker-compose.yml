@@ -1,5 +1,5 @@
 # Lesesalen — a Mastodon client that shows only the book posts.
-# Central TLS/routing lives in mmsge/hetzner-server; nothing Caddy-shaped here.
+# Central TLS/routing lives in mmsge/naustet-server; nothing Caddy-shaped here.
 name: lesesalen           # pin the Compose project name — a dir rename can't orphan named volumes
 
 services:
@@ -21,7 +21,7 @@ services:
     # env_file: .env       # no secrets required — see .env.example
     healthcheck:
       # 127.0.0.1, never `localhost`: in a container localhost resolves to ::1
-      # first and single-address clients never fall back (hetzner-server ADR 0010).
+      # first and single-address clients never fall back (naustet-server ADR 0010).
       # urllib falls through all addresses anyway, but the convention is the convention.
       test:
         - CMD

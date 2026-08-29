@@ -5,9 +5,9 @@ code alone — especially ones we learned the hard way. Each record explains *wh
 a thing is the way it is, so we (and agents) don't undo it by accident later.
 
 This is the **same practice used across every service on the Hetzner box** (the
-central copy lives in `mmsge/hetzner-server`). Each repo keeps its **own** records,
+central copy lives in `mmsge/naustet-server`). Each repo keeps its **own** records,
 about its **own** code. If a decision is about central ingress / routing / the box
-itself, record it in `hetzner-server`; if it's about this service, record it here.
+itself, record it in `naustet-server`; if it's about this service, record it here.
 
 ## Format
 
