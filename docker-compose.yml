@@ -7,6 +7,12 @@ services:
     build: .
     restart: unless-stopped
     mem_limit: 384m        # the box is small (3.7 GB / 2 vCPU) — always cap memory
+    # Cap the container log: json-file never rotates on its own, and 10m x 3 is also how much output survives an outage of the central log collector (naustet-server ADR 0032).
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     # Publish where central Caddy can dial it: the bridge gateway 172.18.0.1:PORT
     # (kept off the public interface) — never 127.0.0.1.
     ports:
